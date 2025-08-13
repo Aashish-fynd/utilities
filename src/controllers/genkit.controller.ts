@@ -17,6 +17,29 @@ const completionSchema = z.object({
   stream: z.boolean().optional().default(false),
 });
 
+/**
+ * @openapi
+ * /api/v1/genkit/completions:
+ *   post:
+ *     summary: Generate a text completion (supports streaming when stream=true)
+ *     tags: [Genkit]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [prompt]
+ *             properties:
+ *               prompt:
+ *                 type: string
+ *               stream:
+ *                 type: boolean
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: Completion result or SSE stream when stream=true
+ */
 export const createCompletion = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = completionSchema.parse(req.body);
 
@@ -72,6 +95,16 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
 });
 
 // Alternative streaming endpoint using chunked transfer encoding
+/**
+ * @openapi
+ * /api/v1/genkit/completions/stream:
+ *   post:
+ *     summary: Generate a text completion streamed as NDJSON
+ *     tags: [Genkit]
+ *     responses:
+ *       200:
+ *         description: NDJSON stream of completion chunks
+ */
 export const streamCompletion = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = completionSchema.parse(req.body);
 
