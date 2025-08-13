@@ -17,11 +17,11 @@ const swaggerDefinition = {
 	],
 	components: {
 		securitySchemes: {
-			ApiKeyAuth: {
-				type: 'apiKey',
-				in: 'header',
-				name: 'X-API-Key',
-				description: 'API key authentication using the X-API-Key header',
+			BearerAuth: {
+				type: 'http',
+				scheme: 'bearer',
+				bearerFormat: 'JWT',
+				description: 'Provide a valid access token as: Bearer <token>'
 			},
 		},
 		schemas: {
@@ -34,7 +34,7 @@ const swaggerDefinition = {
 			},
 		},
 	},
-	security: [{ ApiKeyAuth: [] }],
+	security: [{ BearerAuth: [] }],
 };
 
 export const swaggerSpec = swaggerJSDoc({

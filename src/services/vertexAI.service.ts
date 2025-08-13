@@ -1,9 +1,7 @@
-import { PredictionServiceClient } from '@google-cloud/aiplatform';
-import { google } from '@google-cloud/aiplatform/build/protos/protos.js';
 import { v4 as uuidv4 } from 'uuid';
-import { config } from '@/config/index.js';
 import { logger } from '@/utils/logger.js';
 import { ExternalServiceError } from '@/utils/errors.js';
+import { ai } from '@/services/genkit.service.js';
 
 interface ImageGenerationParams {
   prompt: string;
@@ -25,18 +23,7 @@ interface VideoGenerationParams {
 }
 
 export class VertexAIService {
-  private predictionClient: PredictionServiceClient;
-  private projectId: string;
-  private location: string;
-
-  constructor() {
-    this.projectId = config.GOOGLE_CLOUD_PROJECT;
-    this.location = config.VERTEX_AI_LOCATION;
-
-    this.predictionClient = new PredictionServiceClient({
-      apiEndpoint: config.VERTEX_AI_ENDPOINT || `${this.location}-aiplatform.googleapis.com`,
-    });
-  }
+  constructor() {}
 
   async generateImage(params: ImageGenerationParams): Promise<{
     id: string;
@@ -44,60 +31,41 @@ export class VertexAIService {
     metadata: any;
   }> {
     try {
-      const endpoint = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/imagegeneration@006`;
+      const response: any = await ai.generate({
+        // Imagen image model on Vertex
+        model: 'imagegeneration@006',
+        prompt: params.prompt,
+        config: {
+          // response as image data
+          responseMimeType: 'image/png',
+          // Guidance/seed hints if supported
+          guidance: params.guidanceScale,
+          seed: params.seed,
+        } as any,
+      } as any);
 
-      const instances = [
-        {
-          prompt: params.prompt,
-          ...(params.negativePrompt && { negativePrompt: params.negativePrompt }),
-        },
-      ];
-
-      const parameters = {
-        sampleCount: params.numImages || 1,
-        aspectRatio: this.getAspectRatio(params.width, params.height),
-        guidanceScale: params.guidanceScale || 7.5,
-        ...(params.seed && { seed: params.seed }),
-      };
-
-      const request = {
-        endpoint,
-        instances: instances.map((instance) => google.protobuf.Value.fromObject(instance)),
-        parameters: google.protobuf.Value.fromObject(parameters),
-      };
-
-      logger.info('Generating image with Vertex AI', { params });
-      const [response] = await this.predictionClient.predict(request);
-
-      if (!response.predictions || response.predictions.length === 0) {
-        throw new ExternalServiceError('No predictions returned from Vertex AI');
-      }
-
-      const predictions = response.predictions.map((pred: any) => {
-        const obj = pred.structValue?.fields || {};
-        return {
-          base64: obj.bytesBase64Encoded?.stringValue || '',
-          mimeType: obj.mimeType?.stringValue || 'image/png',
-        };
+      // Extract image bytes from Genkit response
+      const mediaParts = response?.media || response?.output?.[0]?.media || [];
+      const images = (Array.isArray(mediaParts) ? mediaParts : []).map((m: any) => {
+        const dataBuf: Buffer | undefined = m?.data instanceof Buffer ? m.data : m?.data ? Buffer.from(m.data) : undefined;
+        const base64 = dataBuf ? dataBuf.toString('base64') : '';
+        const url = `data:image/png;base64,${base64}`;
+        return { url, base64 };
       });
 
       const id = uuidv4();
-      const images = predictions.map((pred: any) => ({
-        url: `data:${pred.mimeType};base64,${pred.base64}`,
-        base64: pred.base64,
-      }));
-
       return {
         id,
         images,
         metadata: {
           model: 'imagegeneration@006',
-          parameters,
+          width: params.width,
+          height: params.height,
           timestamp: new Date().toISOString(),
         },
       };
     } catch (error) {
-      logger.error('Error generating image:', error);
+      logger.error('Error generating image (Genkit):', error);
       throw new ExternalServiceError(
         `Failed to generate image: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -110,46 +78,34 @@ export class VertexAIService {
     metadata: any;
   }> {
     try {
-      // Note: As of now, Vertex AI doesn't have a direct image-to-video model
-      // This is a placeholder for when the functionality becomes available
-      // You might need to use a different service or wait for the feature
-
-      const endpoint = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/imagen-video@001`;
-
       if (!params.image) {
-        throw new Error('Image is required for image-to-video generation');
+        throw new ExternalServiceError('Image is required for image-to-video generation');
       }
 
-      const instances = [
-        {
-          image: {
-            bytesBase64Encoded: params.image,
+      const imageBuffer = Buffer.from(params.image, 'base64');
+
+      const response: any = await ai.generate({
+        // Placeholder model; depends on availability
+        model: 'imagen-video@001',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { inlineData: { mimeType: 'image/png', data: imageBuffer } },
+              ...(params.prompt ? [{ text: params.prompt }] : []),
+            ],
           },
-          ...(params.prompt && { prompt: params.prompt }),
-        },
-      ];
+        ],
+        config: {
+          responseMimeType: 'video/mp4',
+          frameRate: params.fps || 24,
+          duration: params.duration || 4,
+        } as any,
+      } as any);
 
-      const parameters = {
-        frameRate: params.fps || 24,
-        duration: params.duration || 4,
-        aspectRatio: this.getAspectRatio(params.width, params.height),
-      };
-
-      const request = {
-        endpoint,
-        instances: instances.map((instance) => google.protobuf.Value.fromObject(instance)),
-        parameters: google.protobuf.Value.fromObject(parameters),
-      };
-
-      logger.info('Generating video from image with Vertex AI', { params });
-      const [response] = await this.predictionClient.predict(request);
-
-      if (!response.predictions || response.predictions.length === 0) {
-        throw new ExternalServiceError('No predictions returned from Vertex AI');
-      }
-
-      const prediction = response.predictions[0];
-      const videoBase64 = prediction.structValue?.fields?.bytesBase64Encoded?.stringValue || '';
+      const media = response?.media?.[0] || response?.output?.[0]?.media?.[0];
+      const buf: Buffer | undefined = media?.data instanceof Buffer ? media.data : media?.data ? Buffer.from(media.data) : undefined;
+      const videoBase64 = buf ? buf.toString('base64') : '';
 
       const id = uuidv4();
       return {
@@ -157,12 +113,13 @@ export class VertexAIService {
         videoUrl: `data:video/mp4;base64,${videoBase64}`,
         metadata: {
           model: 'imagen-video@001',
-          parameters,
+          frameRate: params.fps || 24,
+          duration: params.duration || 4,
           timestamp: new Date().toISOString(),
         },
       };
     } catch (error) {
-      logger.error('Error generating video from image:', error);
+      logger.error('Error generating video from image (Genkit):', error);
       throw new ExternalServiceError(
         `Failed to generate video from image: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -175,42 +132,23 @@ export class VertexAIService {
     metadata: any;
   }> {
     try {
-      // Note: Direct text-to-video might not be available yet in Vertex AI
-      // This is a placeholder implementation
-
-      const endpoint = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/text-to-video@001`;
-
       if (!params.prompt) {
-        throw new Error('Prompt is required for text-to-video generation');
+        throw new ExternalServiceError('Prompt is required for text-to-video generation');
       }
 
-      const instances = [
-        {
-          prompt: params.prompt,
-        },
-      ];
+      const response: any = await ai.generate({
+        model: 'text-to-video@001',
+        prompt: params.prompt,
+        config: {
+          responseMimeType: 'video/mp4',
+          frameRate: params.fps || 24,
+          duration: params.duration || 4,
+        } as any,
+      } as any);
 
-      const parameters = {
-        frameRate: params.fps || 24,
-        duration: params.duration || 4,
-        aspectRatio: this.getAspectRatio(params.width, params.height),
-      };
-
-      const request = {
-        endpoint,
-        instances: instances.map((instance) => google.protobuf.Value.fromObject(instance)),
-        parameters: google.protobuf.Value.fromObject(parameters),
-      };
-
-      logger.info('Generating video from text with Vertex AI', { params });
-      const [response] = await this.predictionClient.predict(request);
-
-      if (!response.predictions || response.predictions.length === 0) {
-        throw new ExternalServiceError('No predictions returned from Vertex AI');
-      }
-
-      const prediction = response.predictions[0];
-      const videoBase64 = prediction.structValue?.fields?.bytesBase64Encoded?.stringValue || '';
+      const media = response?.media?.[0] || response?.output?.[0]?.media?.[0];
+      const buf: Buffer | undefined = media?.data instanceof Buffer ? media.data : media?.data ? Buffer.from(media.data) : undefined;
+      const videoBase64 = buf ? buf.toString('base64') : '';
 
       const id = uuidv4();
       return {
@@ -218,28 +156,17 @@ export class VertexAIService {
         videoUrl: `data:video/mp4;base64,${videoBase64}`,
         metadata: {
           model: 'text-to-video@001',
-          parameters,
+          frameRate: params.fps || 24,
+          duration: params.duration || 4,
           timestamp: new Date().toISOString(),
         },
       };
     } catch (error) {
-      logger.error('Error generating video from text:', error);
+      logger.error('Error generating video from text (Genkit):', error);
       throw new ExternalServiceError(
         `Failed to generate video from text: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
-  }
-
-  private getAspectRatio(width?: number, height?: number): string {
-    if (!width || !height) return '1:1';
-
-    const ratio = width / height;
-    if (Math.abs(ratio - 1) < 0.1) return '1:1';
-    if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
-    if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
-    if (Math.abs(ratio - 4 / 3) < 0.1) return '4:3';
-
-    return '1:1';
   }
 }
 

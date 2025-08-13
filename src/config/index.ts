@@ -19,7 +19,8 @@ const envSchema = z.object({
 	PORT: z.string().default('3000').transform(Number),
 	NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
 	
-	// API Security
+	// Auth
+	ACCESS_TOKEN: z.string().optional(),
 	API_KEY: z.string().optional(),
 	
 	// Rate Limiting
