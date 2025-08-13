@@ -33,6 +33,38 @@ const text2VideoSchema = z.object({
   height: z.number().int().min(256).max(1080).optional(),
 });
 
+/**
+ * @openapi
+ * /api/v1/vertex-ai/text2image:
+ *   post:
+ *     summary: Generate images from a text prompt
+ *     tags: [VertexAI]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [prompt]
+ *             properties:
+ *               prompt:
+ *                 type: string
+ *               negativePrompt:
+ *                 type: string
+ *               numImages:
+ *                 type: integer
+ *               width:
+ *                 type: integer
+ *               height:
+ *                 type: integer
+ *               guidanceScale:
+ *                 type: number
+ *               seed:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: A list of generated images
+ */
 export const text2Image = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = text2ImageSchema.parse(req.body);
 
@@ -49,6 +81,16 @@ export const text2Image = asyncHandler(async (req: AuthRequest, res: Response) =
   });
 });
 
+/**
+ * @openapi
+ * /api/v1/vertex-ai/image2video:
+ *   post:
+ *     summary: Generate a short video from an input image
+ *     tags: [VertexAI]
+ *     responses:
+ *       200:
+ *         description: Generated video
+ */
 export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = image2VideoSchema.parse(req.body);
 
@@ -65,6 +107,16 @@ export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) 
   });
 });
 
+/**
+ * @openapi
+ * /api/v1/vertex-ai/text2video:
+ *   post:
+ *     summary: Generate a short video from a text prompt
+ *     tags: [VertexAI]
+ *     responses:
+ *       200:
+ *         description: Generated video
+ */
 export const text2Video = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = text2VideoSchema.parse(req.body);
 

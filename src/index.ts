@@ -8,6 +8,8 @@ import { config, isProduction } from '@/config/index.js';
 import { logger } from '@/utils/logger.js';
 import { errorHandler, notFoundHandler } from '@/middleware/errorHandler.js';
 import routes from '@/routes/index.js';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from '@/utils/swagger.js';
 
 // Create Express app
 const app: Express = express();
@@ -62,6 +64,13 @@ const limiter = rateLimit({
 
 // Apply rate limiting to API routes
 app.use('/api/', limiter);
+
+// Swagger docs
+app.get('/api/docs.json', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Request logging
 app.use((req, _res, next) => {

@@ -17,18 +17,27 @@ curl -s "$BASE_URL/"
 echo -e "\n\n2. Testing health endpoint:"
 curl -s "$BASE_URL/health"
 
+# Test docs json
+echo -e "\n\n3. Testing docs JSON:"
+curl -s "$BASE_URL/api/docs.json" | jq '.info.title, .openapi' 2>/dev/null || echo "(jq not installed)"
+
 # Test Vertex AI health
-echo -e "\n\n3. Testing Vertex AI health:"
+echo -e "\n\n4. Testing Vertex AI health:"
 curl -s "$BASE_URL/api/v1/vertex-ai/health" \
   -H "X-API-Key: $API_KEY"
 
 # Test Genkit health
-echo -e "\n\n4. Testing Genkit health:"
+echo -e "\n\n5. Testing Genkit health:"
 curl -s "$BASE_URL/api/v1/genkit/health" \
   -H "X-API-Key: $API_KEY"
 
+# Test Media health
+echo -e "\n\n6. Testing Media health:"
+curl -s "$BASE_URL/api/v1/media/health" \
+  -H "X-API-Key: $API_KEY"
+
 # Test text-to-image (will fail without proper Google credentials)
-echo -e "\n\n5. Testing text-to-image endpoint:"
+echo -e "\n\n7. Testing text-to-image endpoint:"
 curl -s -X POST "$BASE_URL/api/v1/vertex-ai/text2image" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $API_KEY" \
@@ -40,7 +49,7 @@ curl -s -X POST "$BASE_URL/api/v1/vertex-ai/text2image" \
   }'
 
 # Test completion (non-streaming)
-echo -e "\n\n6. Testing completion endpoint (non-streaming):"
+echo -e "\n\n8. Testing completion endpoint (non-streaming):"
 curl -s -X POST "$BASE_URL/api/v1/genkit/completions" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $API_KEY" \
@@ -51,7 +60,7 @@ curl -s -X POST "$BASE_URL/api/v1/genkit/completions" \
   }'
 
 # Test streaming completion
-echo -e "\n\n7. Testing streaming completion endpoint:"
+echo -e "\n\n9. Testing streaming completion endpoint:"
 echo "Sending request to streaming endpoint..."
 curl -N -X POST "$BASE_URL/api/v1/genkit/completions" \
   -H "Content-Type: application/json" \
@@ -59,6 +68,29 @@ curl -N -X POST "$BASE_URL/api/v1/genkit/completions" \
   -d '{
     "prompt": "Write a haiku about coding",
     "stream": true
+  }'
+
+# Test speech-to-text (uses dummy small payload)
+echo -e "\n\n10. Testing speech-to-text (expected to fail without valid audio/credentials):"
+curl -s -X POST "$BASE_URL/api/v1/media/speech-to-text" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -d '{
+    "audio": "UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAA==",
+    "encoding": "LINEAR16",
+    "sampleRateHertz": 16000,
+    "languageCode": "en-US"
+  }'
+
+# Test text-to-speech
+echo -e "\n\n11. Testing text-to-speech (expected to fail without credentials):"
+curl -s -X POST "$BASE_URL/api/v1/media/text-to-speech" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -d '{
+    "text": "Hello from the API",
+    "voice": { "languageCode": "en-US" },
+    "audioConfig": { "audioEncoding": "MP3" }
   }'
 
 echo -e "\n\nTests completed!"

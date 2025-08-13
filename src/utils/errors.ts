@@ -1,66 +1,69 @@
 export class AppError extends Error {
-  constructor(
-    public statusCode: number,
-    public message: string,
-    public isOperational = true,
-    public stack = ''
-  ) {
-    super(message);
-    Object.setPrototypeOf(this, AppError.prototype);
+	statusCode: number;
+	isOperational: boolean;
 
-    if (stack) {
-      this.stack = stack;
-    } else {
-      Error.captureStackTrace(this, this.constructor);
-    }
-  }
+	/**
+	 * Represents an application-level error with HTTP status and operational flag.
+	 */
+	constructor(message: string, statusCode = 500, isOperational = true) {
+		super(message);
+		this.statusCode = statusCode;
+		this.isOperational = isOperational;
+		Object.setPrototypeOf(this, new.target.prototype);
+		Error.captureStackTrace?.(this, this.constructor);
+	}
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string) {
-    super(400, message);
-    Object.setPrototypeOf(this, ValidationError.prototype);
-  }
+	/**
+	 * Input validation error
+	 */
+	constructor(message: string) {
+		super(message, 400, true);
+	}
 }
 
 export class AuthenticationError extends AppError {
-  constructor(message = 'Authentication failed') {
-    super(401, message);
-    Object.setPrototypeOf(this, AuthenticationError.prototype);
-  }
+	/**
+	 * Authentication failed or missing credentials
+	 */
+	constructor(message: string) {
+		super(message, 401, true);
+	}
 }
 
 export class AuthorizationError extends AppError {
-  constructor(message = 'Access denied') {
-    super(403, message);
-    Object.setPrototypeOf(this, AuthorizationError.prototype);
-  }
+	constructor(message = 'Access denied') {
+		super(message, 403, true);
+	}
 }
 
 export class NotFoundError extends AppError {
-  constructor(message = 'Resource not found') {
-    super(404, message);
-    Object.setPrototypeOf(this, NotFoundError.prototype);
-  }
+	/**
+	 * Resource not found
+	 */
+	constructor(message: string) {
+		super(message, 404, true);
+	}
 }
 
 export class ConflictError extends AppError {
-  constructor(message: string) {
-    super(409, message);
-    Object.setPrototypeOf(this, ConflictError.prototype);
-  }
+	constructor(message: string) {
+		super(message, 409, true);
+	}
 }
 
 export class RateLimitError extends AppError {
-  constructor(message = 'Too many requests') {
-    super(429, message);
-    Object.setPrototypeOf(this, RateLimitError.prototype);
-  }
+	constructor(message = 'Too many requests') {
+		super(message, 429, true);
+	}
 }
 
 export class ExternalServiceError extends AppError {
-  constructor(message: string, statusCode = 502) {
-    super(statusCode, message);
-    Object.setPrototypeOf(this, ExternalServiceError.prototype);
-  }
+	/**
+	 * Error while calling an external provider API
+	 */
+	constructor(message: string) {
+		super(message, 502, true);
+	}
 }

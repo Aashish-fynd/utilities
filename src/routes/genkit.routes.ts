@@ -2,6 +2,12 @@ import { Router } from 'express';
 import { authenticate } from '@/middleware/auth.js';
 import * as genkitController from '@/controllers/genkit.controller.js';
 
+/**
+ * @openapi
+ * tags:
+ *   - name: Genkit
+ *     description: Genkit text generation endpoints
+ */
 const router: Router = Router();
 
 // All Genkit routes require authentication
