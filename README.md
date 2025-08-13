@@ -8,6 +8,9 @@ A scalable and reliable API service that provides utilities for Google's Vertex 
 - **Image-to-Video Generation**: Convert images to videos with optional text prompts
 - **Text-to-Video Generation**: Generate videos directly from text prompts
 - **Streaming Completions**: Real-time text generation using Genkit with SSE (Server-Sent Events)
+- **Audio to Text (STT)**: Transcribe audio with Google Cloud Speech-to-Text
+- **Text to Audio (TTS)**: Synthesize speech with Google Cloud Text-to-Speech
+- **Swagger Docs**: Interactive API documentation at `/api/docs`
 - **Cloudflare Workers Compatible**: Designed to be deployed on Cloudflare's edge network
 - **TypeScript**: Fully typed for better developer experience
 - **Scalable Architecture**: Modular design with proper separation of concerns
@@ -18,7 +21,7 @@ A scalable and reliable API service that provides utilities for Google's Vertex 
 
 - Node.js 18+ 
 - pnpm
-- Google Cloud Project with Vertex AI enabled
+- Google Cloud Project with Vertex AI, Speech-to-Text, and Text-to-Speech enabled
 - Google Cloud Service Account with appropriate permissions
 - Cloudflare account (for deployment)
 
@@ -75,6 +78,11 @@ The server will start on `http://localhost:3000`
 All API endpoints require authentication via API key. Include the key in one of these ways:
 - Header: `X-API-Key: your-api-key`
 - Query parameter: `?api_key=your-api-key`
+
+### Swagger
+
+- OpenAPI JSON: `GET /api/docs.json`
+- Swagger UI: `GET /api/docs`
 
 ### Vertex AI Endpoints
 
@@ -182,6 +190,67 @@ X-API-Key: your-api-key
 {
   "prompt": "Explain machine learning",
   "maxTokens": 2048
+}
+```
+
+### Media Endpoints
+
+#### Speech to Text
+
+```bash
+POST /api/v1/media/speech-to-text
+Content-Type: application/json
+X-API-Key: your-api-key
+
+{
+  "audio": "<base64-audio>",
+  "encoding": "OGG_OPUS",
+  "sampleRateHertz": 16000,
+  "languageCode": "en-US"
+}
+```
+
+Response:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": "uuid",
+    "text": "transcribed text",
+    "alternatives": [
+      { "text": "...", "confidence": 0.91 }
+    ],
+    "metadata": { "provider": "google", "service": "speech-to-text" }
+  }
+}
+```
+
+#### Text to Speech
+
+```bash
+POST /api/v1/media/text-to-speech
+Content-Type: application/json
+X-API-Key: your-api-key
+
+{
+  "text": "Hello world",
+  "voice": { "languageCode": "en-US", "name": "en-US-Neural2-D" },
+  "audioConfig": { "audioEncoding": "MP3" }
+}
+```
+
+Response:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": "uuid",
+    "audioContent": "<base64-mp3>",
+    "mimeType": "audio/mpeg",
+    "metadata": { "provider": "google", "service": "text-to-speech" }
+  }
 }
 ```
 

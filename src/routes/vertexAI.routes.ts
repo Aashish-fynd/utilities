@@ -2,6 +2,12 @@ import { Router } from 'express';
 import { authenticate } from '@/middleware/auth.js';
 import * as vertexAIController from '@/controllers/vertexAI.controller.js';
 
+/**
+ * @openapi
+ * tags:
+ *   - name: VertexAI
+ *     description: Vertex AI image and video utilities
+ */
 const router: Router = Router();
 
 // All Vertex AI routes require authentication

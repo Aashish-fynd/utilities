@@ -1,53 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '@/utils/logger.js';
 import { AppError } from '@/utils/errors.js';
-import { config } from '@/config/index.js';
+import { logger } from '@/utils/logger.js';
 
-export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction): void => {
-  if (res.headersSent) {
-    return next(err);
-  }
+/**
+ * Express error handling middleware that formats known AppError instances
+ * and hides sensitive details for unknown errors.
+ */
+export const errorHandler = (
+	err: unknown,
+	req: Request,
+	res: Response,
+	_next: NextFunction
+): void => {
+	const isAppError = err instanceof AppError;
+	const statusCode = isAppError ? err.statusCode : 500;
+	const message = isAppError ? err.message : 'Internal server error';
 
-  let error = err;
+	if (!isAppError) {
+		logger.error('Unhandled error', { method: req.method, url: req.url, error: err as any });
+	}
 
-  if (!(error instanceof AppError)) {
-    const statusCode = (error as any).statusCode || 500;
-    const message = error.message || 'Internal server error';
-    error = new AppError(statusCode, message, false);
-  }
-
-  const appError = error as AppError;
-
-  if (!appError.isOperational) {
-    logger.error('Unexpected error:', {
-      error: err,
-      stack: err.stack,
-      request: {
-        method: req.method,
-        url: req.url,
-        headers: req.headers,
-        body: req.body,
-      },
-    });
-  }
-
-  const response = {
-    status: 'error',
-    message: appError.message,
-    ...(config.NODE_ENV === 'development' && {
-      stack: appError.stack,
-      originalError: err.message,
-    }),
-  };
-
-  res.status(appError.statusCode).json(response);
+	res.status(statusCode).json({ status: 'error', message });
 };
 
-export const notFoundHandler = (req: Request, res: Response, _next: NextFunction): void => {
-  res.status(404).json({
-    status: 'error',
-    message: `Cannot ${req.method} ${req.url}`,
-  });
+/**
+ * Express 404 handler for unknown routes.
+ */
+export const notFoundHandler = (_req: Request, res: Response): void => {
+	res.status(404).json({ status: 'error', message: 'Route not found' });
 };
 
 export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => unknown) => {
