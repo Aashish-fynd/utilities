@@ -5,7 +5,7 @@ import { logger } from '@/utils/logger.js';
 import { ExternalServiceError } from '@/utils/errors.js';
 
 // Initialize Genkit
-const ai = genkit({
+export const ai = genkit({
   plugins: [
     vertexAI({
       projectId: config.GOOGLE_CLOUD_PROJECT,
