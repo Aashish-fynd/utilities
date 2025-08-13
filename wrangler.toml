@@ -5,11 +5,25 @@ node_compat = true
 
 [env.production]
 name = "vertex-ai-utilities-prod"
-vars = { NODE_ENV = "production" }
+vars = { 
+  NODE_ENV = "production",
+  VERTEX_AI_LOCATION = "us-central1",
+  GENKIT_MODEL = "gemini-1.5-pro",
+  RATE_LIMIT_WINDOW_MS = "900000",
+  RATE_LIMIT_MAX_REQUESTS = "100",
+  LOG_LEVEL = "info"
+}
 
 [env.staging]
 name = "vertex-ai-utilities-staging"
-vars = { NODE_ENV = "staging" }
+vars = { 
+  NODE_ENV = "staging",
+  VERTEX_AI_LOCATION = "us-central1",
+  GENKIT_MODEL = "gemini-1.5-pro",
+  RATE_LIMIT_WINDOW_MS = "900000",
+  RATE_LIMIT_MAX_REQUESTS = "100",
+  LOG_LEVEL = "debug"
+}
 
 [[kv_namespaces]]
 binding = "CACHE"

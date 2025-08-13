@@ -28,7 +28,6 @@
     "@genkit-ai/core": "^1.16.1",
     "@genkit-ai/googleai": "^1.16.1",
     "@genkit-ai/vertexai": "^1.16.1",
-    "@google-cloud/aiplatform": "^5.5.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
