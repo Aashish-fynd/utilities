@@ -1,9 +1,8 @@
-import { genkit, z } from '@genkit-ai/core';
-import { googleAI } from '@genkit-ai/googleai';
+import { genkit, z } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
-import { config } from '../config/index.js';
-import { logger } from '../utils/logger.js';
-import { ExternalServiceError } from '../utils/errors.js';
+import { config } from '@/config/index.js';
+import { logger } from '@/utils/logger.js';
+import { ExternalServiceError } from '@/utils/errors.js';
 
 // Initialize Genkit
 const ai = genkit({
@@ -28,36 +27,15 @@ export interface CompletionParams {
 export class GenkitService {
   async *streamCompletion(params: CompletionParams): AsyncGenerator<string, void, unknown> {
     try {
-      logger.info('Starting streaming completion', { 
+      logger.info('Starting streaming completion', {
         model: config.GENKIT_MODEL,
-        promptLength: params.prompt.length 
+        promptLength: params.prompt.length,
       });
 
-      const llmResponse = await ai.generate({
+      const { stream } = ai.generateStream({
         model: config.GENKIT_MODEL,
-        prompt: params.prompt,
-        system: params.systemPrompt,
-        config: {
-          maxOutputTokens: params.maxTokens || 1024,
-          temperature: params.temperature || 0.7,
-          topP: params.topP || 0.9,
-          topK: params.topK || 40,
-          stopSequences: params.stopSequences,
-        },
-        streamingCallback: (chunk) => {
-          // This callback is called for each chunk
-          // We'll handle streaming differently below
-        },
-      });
-
-      // For true streaming, we need to use the streaming API
-      const streamingModel = ai.model(config.GENKIT_MODEL);
-      
-      const stream = await streamingModel.generateStream({
-        messages: [
-          ...(params.systemPrompt ? [{ role: 'system' as const, content: [{ text: params.systemPrompt }] }] : []),
-          { role: 'user' as const, content: [{ text: params.prompt }] },
-        ],
+        ...(params.systemPrompt ? { system: params.systemPrompt } : {}),
+        messages: [{ role: 'user' as const, content: [{ text: params.prompt }] }],
         config: {
           maxOutputTokens: params.maxTokens || 1024,
           temperature: params.temperature || 0.7,
@@ -90,9 +68,9 @@ export class GenkitService {
     metadata: any;
   }> {
     try {
-      logger.info('Generating completion', { 
+      logger.info('Generating completion', {
         model: config.GENKIT_MODEL,
-        promptLength: params.prompt.length 
+        promptLength: params.prompt.length,
       });
 
       const response = await ai.generate({
@@ -109,7 +87,7 @@ export class GenkitService {
       });
 
       return {
-        text: response.text(),
+        text: response.text,
         usage: {
           promptTokens: response.usage?.inputTokens || 0,
           completionTokens: response.usage?.outputTokens || 0,
@@ -149,7 +127,12 @@ export class GenkitService {
           }),
         }),
       },
-      async (input) => {
+      async (input: {
+        prompt: string;
+        systemPrompt?: string;
+        maxTokens?: number;
+        temperature?: number;
+      }) => {
         const response = await this.generateCompletion(input);
         return {
           text: response.text,

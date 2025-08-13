@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { genkitService } from '../services/genkit.service.js';
-import { asyncHandler } from '../middleware/errorHandler.js';
-import { AuthRequest } from '../middleware/auth.js';
-import { logger } from '../utils/logger.js';
+import { genkitService } from '@/services/genkit.service.js';
+import { asyncHandler } from '@/middleware/errorHandler.js';
+import { AuthRequest } from '@/middleware/auth.js';
+import { logger } from '@/utils/logger.js';
 
 // Validation schema for completion requests
 const completionSchema = z.object({
@@ -19,11 +19,11 @@ const completionSchema = z.object({
 
 export const createCompletion = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = completionSchema.parse(req.body);
-  
-  logger.info('Completion request', { 
+
+  logger.info('Completion request', {
     userId: req.user?.id,
     stream: params.stream,
-    promptLength: params.prompt.length 
+    promptLength: params.prompt.length,
   });
 
   if (params.stream) {
@@ -32,30 +32,30 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Disable Nginx buffering
-    
+
     // Send initial connection message
     res.write('data: {"type":"connection","status":"connected"}\n\n');
-    
+
     try {
       const stream = genkitService.streamCompletion(params);
-      
+
       for await (const chunk of stream) {
         // Send each chunk as SSE event
         const event = JSON.stringify({ type: 'content', content: chunk });
         res.write(`data: ${event}\n\n`);
-        
+
         // Flush the response to ensure data is sent immediately
         if (res.flush) res.flush();
       }
-      
+
       // Send completion event
       res.write('data: {"type":"done","status":"completed"}\n\n');
       res.end();
     } catch (error) {
       logger.error('Streaming error:', error);
-      const errorEvent = JSON.stringify({ 
-        type: 'error', 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      const errorEvent = JSON.stringify({
+        type: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       res.write(`data: ${errorEvent}\n\n`);
       res.end();
@@ -63,7 +63,7 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
   } else {
     // Non-streaming response
     const result = await genkitService.generateCompletion(params);
-    
+
     res.json({
       status: 'success',
       data: result,
@@ -74,49 +74,53 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
 // Alternative streaming endpoint using chunked transfer encoding
 export const streamCompletion = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = completionSchema.parse(req.body);
-  
-  logger.info('Stream completion request', { 
+
+  logger.info('Stream completion request', {
     userId: req.user?.id,
-    promptLength: params.prompt.length 
+    promptLength: params.prompt.length,
   });
 
   // Set headers for streaming JSON
   res.setHeader('Content-Type', 'application/x-ndjson');
   res.setHeader('Transfer-Encoding', 'chunked');
   res.setHeader('X-Accel-Buffering', 'no');
-  
+
   try {
     const stream = genkitService.streamCompletion(params);
-    
+
     for await (const chunk of stream) {
       // Send each chunk as newline-delimited JSON
       res.write(JSON.stringify({ chunk }) + '\n');
-      
+
       // Flush the response
       if (res.flush) res.flush();
     }
-    
+
     // Send final metadata
-    res.write(JSON.stringify({ 
-      done: true,
-      metadata: {
-        model: 'gemini-1.5-pro',
-        timestamp: new Date().toISOString(),
-      }
-    }) + '\n');
-    
+    res.write(
+      JSON.stringify({
+        done: true,
+        metadata: {
+          model: 'gemini-1.5-pro',
+          timestamp: new Date().toISOString(),
+        },
+      }) + '\n'
+    );
+
     res.end();
   } catch (error) {
     logger.error('Streaming error:', error);
-    res.write(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }) + '\n');
+    res.write(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }) + '\n'
+    );
     res.end();
   }
 });
 
 // Health check endpoint for Genkit
-export const checkGenkitHealth = asyncHandler(async (req: Request, res: Response) => {
+export const checkGenkitHealth = asyncHandler(async (_req: Request, res: Response) => {
   res.json({
     status: 'success',
     service: 'genkit',

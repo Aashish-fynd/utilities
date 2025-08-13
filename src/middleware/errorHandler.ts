@@ -1,20 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger.js';
-import { AppError } from '../utils/errors.js';
-import { config } from '../config/index.js';
+import { logger } from '@/utils/logger.js';
+import { AppError } from '@/utils/errors.js';
+import { config } from '@/config/index.js';
 
-export const errorHandler = (
-  err: Error,
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction): void => {
   if (res.headersSent) {
     return next(err);
   }
 
   let error = err;
-  
+
   if (!(error instanceof AppError)) {
     const statusCode = (error as any).statusCode || 500;
     const message = error.message || 'Internal server error';
@@ -48,18 +43,14 @@ export const errorHandler = (
   res.status(appError.statusCode).json(response);
 };
 
-export const notFoundHandler = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const notFoundHandler = (req: Request, res: Response, _next: NextFunction): void => {
   res.status(404).json({
     status: 'error',
     message: `Cannot ${req.method} ${req.url}`,
   });
 };
 
-export const asyncHandler = (fn: Function) => {
+export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => unknown) => {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };

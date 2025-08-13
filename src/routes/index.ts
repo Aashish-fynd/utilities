@@ -1,15 +1,15 @@
-import { Router } from 'express';
-import vertexAIRoutes from './vertexAI.routes.js';
-import genkitRoutes from './genkit.routes.js';
+import { Router, Request, Response } from 'express';
+import vertexAIRoutes from '@/routes/vertexAI.routes.js';
+import genkitRoutes from '@/routes/genkit.routes.js';
 
-const router = Router();
+const router: Router = Router();
 
 // Mount route modules
 router.use('/api/v1/vertex-ai', vertexAIRoutes);
 router.use('/api/v1/genkit', genkitRoutes);
 
 // Root endpoint
-router.get('/', (req, res) => {
+router.get('/', (_req: Request, res: Response) => {
   res.json({
     status: 'success',
     message: 'Vertex AI Utilities API',
@@ -32,7 +32,7 @@ router.get('/', (req, res) => {
 });
 
 // Health check endpoint
-router.get('/health', (req, res) => {
+router.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'success',
     uptime: process.uptime(),

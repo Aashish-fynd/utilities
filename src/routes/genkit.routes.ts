@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import * as genkitController from '../controllers/genkit.controller.js';
+import { authenticate } from '@/middleware/auth.js';
+import * as genkitController from '@/controllers/genkit.controller.js';
 
-const router = Router();
+const router: Router = Router();
 
 // All Genkit routes require authentication
 router.use(authenticate);

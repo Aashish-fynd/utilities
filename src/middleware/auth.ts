@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { config } from '../config/index.js';
-import { AuthenticationError } from '../utils/errors.js';
+import { config } from '@/config/index.js';
+import { AuthenticationError } from '@/utils/errors.js';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -9,7 +9,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const authenticate = (req: AuthRequest, _res: Response, next: NextFunction): void => {
   try {
     // Skip authentication in development mode if no API key is configured
     if (config.NODE_ENV === 'development' && !config.API_KEY) {
@@ -17,7 +17,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
       return next();
     }
 
-    const apiKey = req.headers['x-api-key'] as string || req.query.api_key as string;
+    const apiKey = (req.headers['x-api-key'] as string) || (req.query.api_key as string);
 
     if (!apiKey) {
       throw new AuthenticationError('API key is required');
@@ -40,15 +40,15 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
   }
 };
 
-export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const apiKey = req.headers['x-api-key'] as string || req.query.api_key as string;
-  
+export const optionalAuth = (req: AuthRequest, _res: Response, next: NextFunction): void => {
+  const apiKey = (req.headers['x-api-key'] as string) || (req.query.api_key as string);
+
   if (apiKey && config.API_KEY && apiKey === config.API_KEY) {
     req.user = {
       id: 'user-' + Date.now(),
       apiKey,
     };
   }
-  
+
   next();
 };

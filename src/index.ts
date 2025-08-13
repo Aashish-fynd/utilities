@@ -1,12 +1,13 @@
 import express, { Express } from 'express';
+import type { RequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import { config, isProduction } from './config/index.js';
-import { logger, stream } from './utils/logger.js';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import routes from './routes/index.js';
+import { config, isProduction } from '@/config/index.js';
+import { logger } from '@/utils/logger.js';
+import { errorHandler, notFoundHandler } from '@/middleware/errorHandler.js';
+import routes from '@/routes/index.js';
 
 // Create Express app
 const app: Express = express();
@@ -15,31 +16,35 @@ const app: Express = express();
 app.set('trust proxy', true);
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+      },
     },
-  },
-}));
+  })
+);
 
 // CORS configuration
-app.use(cors({
-  origin: isProduction ? process.env.ALLOWED_ORIGINS?.split(',') : '*',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
-}));
+app.use(
+  cors({
+    origin: isProduction ? process.env.ALLOWED_ORIGINS?.split(',') : '*',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+  })
+);
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Compression middleware
-app.use(compression());
+app.use(compression() as unknown as RequestHandler);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -47,7 +52,7 @@ const limiter = rateLimit({
   max: config.RATE_LIMIT_MAX_REQUESTS,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req, res) => {
+  handler: (_req, res) => {
     res.status(429).json({
       status: 'error',
       message: 'Too many requests, please try again later.',
@@ -59,7 +64,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Request logging
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   logger.info(`${req.method} ${req.url}`, {
     ip: req.ip,
     userAgent: req.get('user-agent'),
@@ -155,10 +160,12 @@ export const handleRequest = async (request: Request): Promise<Response> => {
   // Process request through Express
   return new Promise((resolve) => {
     app(mockReq, mockRes, () => {
-      resolve(new Response(mockRes.body, {
-        status: mockRes.statusCode,
-        headers: mockRes.headers,
-      }));
+      resolve(
+        new Response(mockRes.body, {
+          status: mockRes.statusCode,
+          headers: mockRes.headers,
+        })
+      );
     });
   });
 };

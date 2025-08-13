@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import { validate } from '../middleware/validation.js';
-import * as vertexAIController from '../controllers/vertexAI.controller.js';
+import { authenticate } from '@/middleware/auth.js';
+import * as vertexAIController from '@/controllers/vertexAI.controller.js';
 
-const router = Router();
+const router: Router = Router();
 
 // All Vertex AI routes require authentication
 router.use(authenticate);

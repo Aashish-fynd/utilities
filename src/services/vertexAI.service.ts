@@ -1,9 +1,9 @@
 import { PredictionServiceClient } from '@google-cloud/aiplatform';
 import { google } from '@google-cloud/aiplatform/build/protos/protos.js';
 import { v4 as uuidv4 } from 'uuid';
-import { config } from '../config/index.js';
-import { logger } from '../utils/logger.js';
-import { ExternalServiceError } from '../utils/errors.js';
+import { config } from '@/config/index.js';
+import { logger } from '@/utils/logger.js';
+import { ExternalServiceError } from '@/utils/errors.js';
 
 interface ImageGenerationParams {
   prompt: string;
@@ -32,7 +32,7 @@ export class VertexAIService {
   constructor() {
     this.projectId = config.GOOGLE_CLOUD_PROJECT;
     this.location = config.VERTEX_AI_LOCATION;
-    
+
     this.predictionClient = new PredictionServiceClient({
       apiEndpoint: config.VERTEX_AI_ENDPOINT || `${this.location}-aiplatform.googleapis.com`,
     });
@@ -45,7 +45,7 @@ export class VertexAIService {
   }> {
     try {
       const endpoint = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/imagegeneration@006`;
-      
+
       const instances = [
         {
           prompt: params.prompt,
@@ -62,9 +62,7 @@ export class VertexAIService {
 
       const request = {
         endpoint,
-        instances: instances.map((instance) => 
-          google.protobuf.Value.fromObject(instance)
-        ),
+        instances: instances.map((instance) => google.protobuf.Value.fromObject(instance)),
         parameters: google.protobuf.Value.fromObject(parameters),
       };
 
@@ -115,19 +113,21 @@ export class VertexAIService {
       // Note: As of now, Vertex AI doesn't have a direct image-to-video model
       // This is a placeholder for when the functionality becomes available
       // You might need to use a different service or wait for the feature
-      
+
       const endpoint = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/imagen-video@001`;
-      
+
       if (!params.image) {
         throw new Error('Image is required for image-to-video generation');
       }
 
-      const instances = [{
-        image: {
-          bytesBase64Encoded: params.image,
+      const instances = [
+        {
+          image: {
+            bytesBase64Encoded: params.image,
+          },
+          ...(params.prompt && { prompt: params.prompt }),
         },
-        ...(params.prompt && { prompt: params.prompt }),
-      }];
+      ];
 
       const parameters = {
         frameRate: params.fps || 24,
@@ -137,9 +137,7 @@ export class VertexAIService {
 
       const request = {
         endpoint,
-        instances: instances.map((instance) => 
-          google.protobuf.Value.fromObject(instance)
-        ),
+        instances: instances.map((instance) => google.protobuf.Value.fromObject(instance)),
         parameters: google.protobuf.Value.fromObject(parameters),
       };
 
@@ -152,7 +150,7 @@ export class VertexAIService {
 
       const prediction = response.predictions[0];
       const videoBase64 = prediction.structValue?.fields?.bytesBase64Encoded?.stringValue || '';
-      
+
       const id = uuidv4();
       return {
         id,
@@ -179,16 +177,18 @@ export class VertexAIService {
     try {
       // Note: Direct text-to-video might not be available yet in Vertex AI
       // This is a placeholder implementation
-      
+
       const endpoint = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/text-to-video@001`;
-      
+
       if (!params.prompt) {
         throw new Error('Prompt is required for text-to-video generation');
       }
 
-      const instances = [{
-        prompt: params.prompt,
-      }];
+      const instances = [
+        {
+          prompt: params.prompt,
+        },
+      ];
 
       const parameters = {
         frameRate: params.fps || 24,
@@ -198,9 +198,7 @@ export class VertexAIService {
 
       const request = {
         endpoint,
-        instances: instances.map((instance) => 
-          google.protobuf.Value.fromObject(instance)
-        ),
+        instances: instances.map((instance) => google.protobuf.Value.fromObject(instance)),
         parameters: google.protobuf.Value.fromObject(parameters),
       };
 
@@ -213,7 +211,7 @@ export class VertexAIService {
 
       const prediction = response.predictions[0];
       const videoBase64 = prediction.structValue?.fields?.bytesBase64Encoded?.stringValue || '';
-      
+
       const id = uuidv4();
       return {
         id,
@@ -234,13 +232,13 @@ export class VertexAIService {
 
   private getAspectRatio(width?: number, height?: number): string {
     if (!width || !height) return '1:1';
-    
+
     const ratio = width / height;
     if (Math.abs(ratio - 1) < 0.1) return '1:1';
-    if (Math.abs(ratio - 16/9) < 0.1) return '16:9';
-    if (Math.abs(ratio - 9/16) < 0.1) return '9:16';
-    if (Math.abs(ratio - 4/3) < 0.1) return '4:3';
-    
+    if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
+    if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
+    if (Math.abs(ratio - 4 / 3) < 0.1) return '4:3';
+
     return '1:1';
   }
 }

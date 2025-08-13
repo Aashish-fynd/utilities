@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { vertexAIService } from '../services/vertexAI.service.js';
-import { asyncHandler } from '../middleware/errorHandler.js';
-import { AuthRequest } from '../middleware/auth.js';
-import { logger } from '../utils/logger.js';
+import { vertexAIService } from '@/services/vertexAI.service.js';
+import { asyncHandler } from '@/middleware/errorHandler.js';
+import { AuthRequest } from '@/middleware/auth.js';
+import { logger } from '@/utils/logger.js';
 
 // Validation schemas
 const text2ImageSchema = z.object({
@@ -35,10 +35,10 @@ const text2VideoSchema = z.object({
 
 export const text2Image = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = text2ImageSchema.parse(req.body);
-  
-  logger.info('Text to image request', { 
+
+  logger.info('Text to image request', {
     userId: req.user?.id,
-    prompt: params.prompt.substring(0, 50) + '...' 
+    prompt: params.prompt.substring(0, 50) + '...',
   });
 
   const result = await vertexAIService.generateImage(params);
@@ -51,10 +51,10 @@ export const text2Image = asyncHandler(async (req: AuthRequest, res: Response) =
 
 export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = image2VideoSchema.parse(req.body);
-  
-  logger.info('Image to video request', { 
+
+  logger.info('Image to video request', {
     userId: req.user?.id,
-    imageSize: params.image.length 
+    imageSize: params.image.length,
   });
 
   const result = await vertexAIService.generateVideoFromImage(params);
@@ -67,10 +67,10 @@ export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) 
 
 export const text2Video = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = text2VideoSchema.parse(req.body);
-  
-  logger.info('Text to video request', { 
+
+  logger.info('Text to video request', {
     userId: req.user?.id,
-    prompt: params.prompt.substring(0, 50) + '...' 
+    prompt: params.prompt.substring(0, 50) + '...',
   });
 
   const result = await vertexAIService.generateVideoFromText(params);
@@ -82,7 +82,7 @@ export const text2Video = asyncHandler(async (req: AuthRequest, res: Response) =
 });
 
 // Health check endpoint for Vertex AI
-export const checkVertexAIHealth = asyncHandler(async (req: Request, res: Response) => {
+export const checkVertexAIHealth = asyncHandler(async (_req: Request, res: Response) => {
   // You could add actual health checks here
   res.json({
     status: 'success',
