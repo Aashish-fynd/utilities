@@ -1,13 +1,55 @@
 {
-  "name": "utilities",
+  "name": "vertex-ai-utilities-api",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Utilities API for Google Vertex AI integration with Express.js and Genkit",
+  "main": "dist/index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "jest",
+    "deploy": "pnpm build && wrangler deploy",
+    "deploy:staging": "pnpm build && wrangler deploy --env staging"
   },
-  "keywords": [],
+  "keywords": ["vertex-ai", "genkit", "express", "cloudflare", "api"],
   "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "license": "MIT",
+  "dependencies": {
+    "@google-cloud/aiplatform": "^3.18.0",
+    "@genkit-ai/ai": "^0.5.11",
+    "@genkit-ai/core": "^0.5.11",
+    "@genkit-ai/googleai": "^0.5.11",
+    "@genkit-ai/vertexai": "^0.5.11",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4",
+    "compression": "^1.7.4",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.28",
+    "@types/cors": "^2.8.17",
+    "@types/compression": "^1.7.5",
+    "@types/uuid": "^9.0.8",
+    "typescript": "^5.4.2",
+    "tsx": "^4.7.1",
+    "@typescript-eslint/eslint-plugin": "^7.2.0",
+    "@typescript-eslint/parser": "^7.2.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.12",
+    "ts-jest": "^29.1.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
