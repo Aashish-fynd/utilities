@@ -16,7 +16,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.CLOUDFLARE_WORKER) {
 
 const envSchema = z.object({
   // Google Cloud
-  GOOGLE_CLOUD_PROJECT: z.string().min(1, 'GOOGLE_CLOUD_PROJECT is required'),
+  GOOGLE_CLOUD_PROJECT: z.string(),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
 
   // Vertex AI
@@ -30,7 +30,8 @@ const envSchema = z.object({
   PORT: z.string().default('3000').transform(Number),
   NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
 
-  // API Security
+  // Auth
+  ACCESS_TOKEN: z.string().optional(),
   API_KEY: z.string().optional(),
 
   // Rate Limiting
@@ -40,25 +41,15 @@ const envSchema = z.object({
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 
-  // CORS
-  ALLOWED_ORIGINS: z.string().optional(),
+  // Docs
+  SWAGGER_SERVER_URL: z.string().optional(),
 });
 
 const parseEnv = () => {
   try {
-    const result = envSchema.parse(process.env);
-
-    return result;
+    return envSchema.parse(process.env);
   } catch (error) {
-    console.error('❌ Environment configuration error:');
-
-    if (error instanceof z.ZodError) {
-      console.error('Missing or invalid environment variables:');
-      console.error('Error details:', error.message);
-    } else {
-      console.error('Unexpected error:', error);
-    }
-
+    console.error('Invalid environment variables:', error);
     process.exit(1);
   }
 };
