@@ -11,6 +11,13 @@ export default {
     if (env.GENKIT_MODEL) process.env.GENKIT_MODEL = env.GENKIT_MODEL;
     if (env.API_KEY) process.env.API_KEY = env.API_KEY;
 
+    // Cloudinary
+    if (env.CLOUDINARY_CLOUD_NAME) process.env.CLOUDINARY_CLOUD_NAME = env.CLOUDINARY_CLOUD_NAME;
+    if (env.CLOUDINARY_API_KEY) process.env.CLOUDINARY_API_KEY = env.CLOUDINARY_API_KEY;
+    if (env.CLOUDINARY_API_SECRET) process.env.CLOUDINARY_API_SECRET = env.CLOUDINARY_API_SECRET;
+    if (env.CLOUDINARY_UPLOAD_PRESET) process.env.CLOUDINARY_UPLOAD_PRESET = env.CLOUDINARY_UPLOAD_PRESET;
+    if (env.CLOUDINARY_FOLDER) process.env.CLOUDINARY_FOLDER = env.CLOUDINARY_FOLDER;
+
     // Mark as Cloudflare Worker environment
     process.env.CLOUDFLARE_WORKER = 'true';
 
