@@ -34,6 +34,9 @@ const envSchema = z.object({
   ACCESS_TOKEN: z.string().optional(),
   API_KEY: z.string().optional(),
 
+  // Database
+  SQLITE_DB_PATH: z.string().optional(),
+
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: z.string().default('900000').transform(Number),
   RATE_LIMIT_MAX_REQUESTS: z.string().default('100').transform(Number),

@@ -1,13 +1,28 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Test script for Vertex AI Utilities API
-# Make sure the server is running before executing this script
+BASE_URL=${BASE_URL:-http://localhost:3000}
+ACCESS_TOKEN=${ACCESS_TOKEN:-""}
+ADMIN_KEY=${ADMIN_KEY:-""}
 
-ACCESS_TOKEN="dev-access-token-12345"
-BASE_URL="http://localhost:3000"
-
-echo "Testing Vertex AI Utilities API..."
-echo "================================="
+# Helper
+call_api() {
+  local method=$1
+  local path=$2
+  local data=${3:-}
+  if [ -n "$data" ]; then
+    curl -sS -X "$method" "$BASE_URL$path" \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $ACCESS_TOKEN" \
+      -H "X-Admin-Key: $ADMIN_KEY" \
+      -d "$data"
+  } else
+    curl -sS -X "$method" "$BASE_URL$path" \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $ACCESS_TOKEN" \
+      -H "X-Admin-Key: $ADMIN_KEY"
+  fi
+}
 
 # Test root endpoint
 echo -e "\n1. Testing root endpoint:"
@@ -92,5 +107,22 @@ curl -s -X POST "$BASE_URL/api/v1/media/text-to-speech" \
     "voice": { "languageCode": "en-US" },
     "audioConfig": { "audioEncoding": "MP3" }
   }'
+
+# --- Auth flows ---
+# 1) Request token
+REQ=$(call_api POST "/api/v1/auth/request" '{"email":"user@example.com","apis":["genkit","media"]}')
+echo "$REQ"
+REQ_ID=$(echo "$REQ" | jq -r '.data.request.id // empty')
+
+# 2) List pending requests (admin)
+call_api GET "/api/v1/auth/requests?status=pending" | jq '.'
+
+# 3) Approve request (admin)
+if [ -n "$REQ_ID" ]; then
+  APPROVE=$(call_api POST "/api/v1/auth/approve" "{\"requestId\":\"$REQ_ID\"}")
+  echo "$APPROVE" | jq '.'
+  TOKEN_VALUE=$(echo "$APPROVE" | jq -r '.data.token.token // empty')
+  echo "Issued token: $TOKEN_VALUE"
+fi
 
 echo -e "\n\nTests completed!"

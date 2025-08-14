@@ -41,6 +41,8 @@ VERTEX_AI_LOCATION=us-central1
 
 # API Configuration
 ACCESS_TOKEN=your-strong-access-token
+API_KEY=admin-approval-key
+SQLITE_DB_PATH=./data/app.db
 PORT=3000
 ```
 
@@ -61,10 +63,16 @@ The server will start on `http://localhost:3000`
 All API endpoints require Bearer access token.
 - Header: `Authorization: Bearer <your-access-token>`
 
-### Swagger
+New token management endpoints:
+- Request a token: `POST /api/v1/auth/request` with `{ email, apis: ["genkit"|"vertex-ai"|"media"] }`
+- List requests (admin): `GET /api/v1/auth/requests?status=pending` (requires `Authorization` and `X-Admin-Key: $API_KEY`)
+- Approve (admin): `POST /api/v1/auth/approve` with `{ requestId }` (requires `Authorization` and `X-Admin-Key`)
+- Reject (admin): `POST /api/v1/auth/reject` with `{ requestId }` (requires `Authorization` and `X-Admin-Key`)
 
-- OpenAPI JSON: `GET /api/docs.json`
-- Swagger UI: `GET /api/docs`
+Scopes used:
+- `genkit` for `/api/v1/genkit/*`
+- `vertex-ai` for `/api/v1/vertex-ai/*`
+- `media` for `/api/v1/media/*`
 
 ### Swagger
 

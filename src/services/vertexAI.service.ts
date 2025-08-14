@@ -22,14 +22,6 @@ interface VideoGenerationParams {
   height?: number;
 }
 
-const ai = genkit({
-  plugins: [
-    vertexAI({
-      projectId: config.GOOGLE_CLOUD_PROJECT,
-      location: config.VERTEX_AI_LOCATION,
-    }),
-  ],
-});
 
 export class VertexAIService {
   constructor() {}

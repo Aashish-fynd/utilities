@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, RequestHandler } from 'express';
 import { z } from 'zod';
 import { genkitService } from '@/services/genkit.service.js';
 import { asyncHandler } from '@/middleware/errorHandler.js';
@@ -153,7 +153,7 @@ export const streamCompletion = asyncHandler(async (req: AuthRequest, res: Respo
 });
 
 // Health check endpoint for Genkit
-export const checkGenkitHealth = asyncHandler(async (_req: Request, res: Response) => {
+export const checkGenkitHealth: RequestHandler = asyncHandler(async (_req: Request, res: Response) => {
   res.json({
     status: 'success',
     service: 'genkit',
