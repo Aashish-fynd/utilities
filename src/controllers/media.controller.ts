@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, RequestHandler } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '@/middleware/errorHandler.js';
 import { AuthRequest } from '@/middleware/auth.js';
@@ -60,7 +60,7 @@ export const textToSpeech = asyncHandler(async (req: AuthRequest, res: Response)
 });
 
 // Health check endpoint for Media
-export const checkMediaHealth = asyncHandler(async (_req: Request, res: Response) => {
+export const checkMediaHealth: RequestHandler = asyncHandler(async (_req: Request, res: Response) => {
 	res.json({
 		status: 'success',
 		service: 'media',

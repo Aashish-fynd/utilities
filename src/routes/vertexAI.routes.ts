@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '@/middleware/auth.js';
+import { authenticate, requireScope } from '@/middleware/auth.js';
 import * as vertexAIController from '@/controllers/vertexAI.controller.js';
 
 /**
@@ -12,6 +12,7 @@ const router: Router = Router();
 
 // All Vertex AI routes require authentication
 router.use(authenticate);
+router.use(requireScope('vertex-ai'));
 
 // Image generation
 router.post('/text2image', vertexAIController.text2Image);

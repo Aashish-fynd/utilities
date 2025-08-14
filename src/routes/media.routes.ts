@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '@/middleware/auth.js';
+import { authenticate, requireScope } from '@/middleware/auth.js';
 import * as mediaController from '@/controllers/media.controller.js';
 
 /**
@@ -12,6 +12,7 @@ const router: Router = Router();
 
 // All media routes require authentication
 router.use(authenticate);
+router.use(requireScope('media'));
 
 /**
  * @openapi

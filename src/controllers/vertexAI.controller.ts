@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, RequestHandler } from 'express';
 import { z } from 'zod';
 import { vertexAIService } from '@/services/vertexAI.service.js';
 import { asyncHandler } from '@/middleware/errorHandler.js';
@@ -134,7 +134,7 @@ export const text2Video = asyncHandler(async (req: AuthRequest, res: Response) =
 });
 
 // Health check endpoint for Vertex AI
-export const checkVertexAIHealth = asyncHandler(async (_req: Request, res: Response) => {
+export const checkVertexAIHealth: RequestHandler = asyncHandler(async (_req: Request, res: Response) => {
   // You could add actual health checks here
   res.json({
     status: 'success',
