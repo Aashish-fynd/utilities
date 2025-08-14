@@ -50,3 +50,5 @@ temp/
 # Cloudflare
 .wrangler/
 wrangler.toml.local
+
+data/

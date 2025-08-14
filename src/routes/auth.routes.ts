@@ -8,8 +8,8 @@ import { authenticate, requireAdmin } from '@/middleware/auth.js';
 const router: Router = Router();
 
 const requestSchema = z.object({
-	email: z.string().email(),
-	apis: z.array(z.string()).min(1),
+  email: z.e164(),
+  apis: z.array(z.string()).min(1),
 });
 
 /**
@@ -44,12 +44,16 @@ const requestSchema = z.object({
  *       200:
  *         description: Request created
  */
-router.post('/request', validate(requestSchema), asyncHandler(async (req, res) => {
-	const { email, apis } = req.body as z.infer<typeof requestSchema>;
-	const user = authService.findOrCreateUserByEmail(email);
-	const request = authService.createTokenRequest(user.id, apis);
-	res.json({ status: 'success', data: { request } });
-}));
+router.post(
+  '/request',
+  validate(requestSchema),
+  asyncHandler(async (req, res) => {
+    const { email, apis } = req.body as z.infer<typeof requestSchema>;
+    const user = authService.findOrCreateUserByEmail(email);
+    const request = authService.createTokenRequest(user.id, apis);
+    res.json({ status: 'success', data: { request } });
+  })
+);
 
 /**
  * @openapi
@@ -67,15 +71,20 @@ router.post('/request', validate(requestSchema), asyncHandler(async (req, res) =
  *       200:
  *         description: List of requests
  */
-router.get('/requests', authenticate, requireAdmin, asyncHandler(async (req, res) => {
-	const status = req.query.status as 'pending' | 'approved' | 'rejected' | undefined;
-	const list = authService.listTokenRequests(status);
-	res.json({ status: 'success', data: list });
-}));
+router.get(
+  '/requests',
+  authenticate,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const status = req.query.status as 'pending' | 'approved' | 'rejected' | undefined;
+    const list = authService.listTokenRequests(status);
+    res.json({ status: 'success', data: list });
+  })
+);
 
 const decisionSchema = z.object({
-	requestId: z.string().uuid(),
-	note: z.string().optional(),
+  requestId: z.string().uuid(),
+  note: z.string().optional(),
 });
 
 /**
@@ -84,15 +93,36 @@ const decisionSchema = z.object({
  *   post:
  *     summary: Approve a token request and issue a token (admin only)
  *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [requestId, note]
+ *             properties:
+ *               requestId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The ID of the token request to approve
+ *               note:
+ *                 type: string
+ *                 description: Optional admin note for the approval
  *     responses:
  *       200:
  *         description: Approved with token
  */
-router.post('/approve', authenticate, requireAdmin, validate(decisionSchema), asyncHandler(async (req, res) => {
-	const { requestId, note } = req.body as z.infer<typeof decisionSchema>;
-	const { request, token } = authService.approveTokenRequest(requestId, note);
-	res.json({ status: 'success', data: { request, token } });
-}));
+router.post(
+  '/approve',
+  authenticate,
+  requireAdmin,
+  validate(decisionSchema),
+  asyncHandler(async (req, res) => {
+    const { requestId, note } = req.body as z.infer<typeof decisionSchema>;
+    const { request, token } = authService.approveTokenRequest(requestId, note);
+    res.json({ status: 'success', data: { request, token } });
+  })
+);
 
 /**
  * @openapi
@@ -100,11 +130,32 @@ router.post('/approve', authenticate, requireAdmin, validate(decisionSchema), as
  *   post:
  *     summary: Reject a token request (admin only)
  *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [requestId, note]
+ *             properties:
+ *               requestId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The ID of the token request to reject
+ *               note:
+ *                 type: string
+ *                 description: Optional admin note for the rejection
  */
-router.post('/reject', authenticate, requireAdmin, validate(decisionSchema), asyncHandler(async (req, res) => {
-	const { requestId, note } = req.body as z.infer<typeof decisionSchema>;
-	const updated = authService.rejectTokenRequest(requestId, note);
-	res.json({ status: 'success', data: updated });
-}));
+router.post(
+  '/reject',
+  authenticate,
+  requireAdmin,
+  validate(decisionSchema),
+  asyncHandler(async (req, res) => {
+    const { requestId, note } = req.body as z.infer<typeof decisionSchema>;
+    const updated = authService.rejectTokenRequest(requestId, note);
+    res.json({ status: 'success', data: updated });
+  })
+);
 
 export default router;

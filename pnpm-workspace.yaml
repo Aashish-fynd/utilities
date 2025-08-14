@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - '@firebase/util'
+  - '@scarf/scarf'
+  - better-sqlite3
+  - esbuild
+  - protobufjs
+  - unrs-resolver

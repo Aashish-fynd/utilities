@@ -10,6 +10,12 @@ export const ai = genkit({
     vertexAI({
       projectId: config.GOOGLE_CLOUD_PROJECT,
       location: config.VERTEX_AI_LOCATION,
+      googleAuth: {
+        credentials: {
+          client_email: config.GOOGLE_APPLICATION_CREDENTIALS,
+          private_key: config.GOOGLE_APPLICATION_CREDENTIALS,
+        },
+      },
     }),
   ],
 });

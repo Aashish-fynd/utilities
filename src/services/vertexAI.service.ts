@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger.js';
 import { ExternalServiceError } from '@/utils/errors.js';
 import { ai } from '@/services/genkit.service.js';
+import { config } from '@/config';
+import axios from 'axios';
 
 interface ImageGenerationParams {
   prompt: string;
@@ -9,8 +11,7 @@ interface ImageGenerationParams {
   numImages?: number;
   width?: number;
   height?: number;
-  guidanceScale?: number;
-  seed?: number;
+  model: string;
 }
 
 interface VideoGenerationParams {
@@ -20,11 +21,14 @@ interface VideoGenerationParams {
   fps?: number;
   width?: number;
   height?: number;
+  model: string;
+  sampleCount?: number;
 }
 
-
 export class VertexAIService {
-  constructor() {}
+  private getBaseUrl(model: string) {
+    return `https://${config.VERTEX_AI_LOCATION}-aiplatform.googleapis.com/v1/projects/${config.GOOGLE_CLOUD_PROJECT}/locations/${config.VERTEX_AI_LOCATION}/publishers/google/models/${model}:predict`;
+  }
 
   async generateImage(params: ImageGenerationParams): Promise<{
     id: string;
@@ -32,39 +36,34 @@ export class VertexAIService {
     metadata: any;
   }> {
     try {
-      const response: any = await ai.generate({
-        // Imagen image model on Vertex
-        model: 'imagegeneration@006',
-        prompt: params.prompt,
-        config: {
-          // response as image data
-          responseMimeType: 'image/png',
-          // Guidance/seed hints if supported
-          guidance: params.guidanceScale,
-          seed: params.seed,
-        } as any,
-      } as any);
+      const response = await axios.post(
+        this.getBaseUrl(params.model),
+        {
+          instances: [
+            {
+              prompt: params.prompt,
+            },
+          ],
+          parameters: {
+            sampleCount: params.numImages || 1,
+          },
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${config.GOOGLE_APPLICATION_CREDENTIALS}`,
+          },
+        }
+      );
 
-      // Extract image bytes from Genkit response
-      const mediaParts = response?.media || response?.output?.[0]?.media || [];
-      const images = (Array.isArray(mediaParts) ? mediaParts : []).map((m: any) => {
-        const dataBuf: Buffer | undefined =
-          m?.data instanceof Buffer ? m.data : m?.data ? Buffer.from(m.data) : undefined;
-        const base64 = dataBuf ? dataBuf.toString('base64') : '';
-        const url = `data:image/png;base64,${base64}`;
-        return { url, base64 };
-      });
-
-      if (!response.media?.url) {
-        throw new ExternalServiceError('No media returned from Imagen');
-      }
+      const predictions = response.data.predictions;
 
       const id = uuidv4();
       return {
         id,
-        images,
+        images: predictions,
         metadata: {
-          model: 'imagegeneration@006',
+          model: params.model,
           width: params.width,
           height: params.height,
           timestamp: new Date().toISOString(),
@@ -147,15 +146,16 @@ export class VertexAIService {
         throw new ExternalServiceError('Prompt is required for text-to-video generation');
       }
 
-      const response: any = await ai.generate({
-        model: 'text-to-video@001',
-        prompt: params.prompt,
-        config: {
-          responseMimeType: 'video/mp4',
-          frameRate: params.fps || 24,
-          duration: params.duration || 4,
-        } as any,
-      } as any);
+      const response: any = await axios.post(this.getBaseUrl(params.model), {
+        instances: [
+          {
+            prompt: params.prompt,
+          },
+        ],
+        parameters: {
+          sampleCount: params.sampleCount || 1,
+        },
+      });
 
       const media = response?.media?.[0] || response?.output?.[0]?.media?.[0];
       const buf: Buffer | undefined =
@@ -171,7 +171,7 @@ export class VertexAIService {
         id,
         videoUrl: `data:video/mp4;base64,${videoBase64}`,
         metadata: {
-          model: 'text-to-video@001',
+          model: params.model,
           frameRate: params.fps || 24,
           duration: params.duration || 4,
           timestamp: new Date().toISOString(),

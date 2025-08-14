@@ -33,17 +33,14 @@ router.get('/', (_req: Request, res: Response) => {
         text2image: 'POST /api/v1/vertex-ai/text2image',
         image2video: 'POST /api/v1/vertex-ai/image2video',
         text2video: 'POST /api/v1/vertex-ai/text2video',
-        health: 'GET /api/v1/vertex-ai/health',
       },
       genkit: {
         completions: 'POST /api/v1/genkit/completions',
         streamCompletions: 'POST /api/v1/genkit/completions/stream',
-        health: 'GET /api/v1/genkit/health',
       },
       media: {
         speechToText: 'POST /api/v1/media/speech-to-text',
         textToSpeech: 'POST /api/v1/media/text-to-speech',
-        health: 'GET /api/v1/media/health',
       },
       auth: {
         request: 'POST /api/v1/auth/request',

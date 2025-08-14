@@ -18,7 +18,4 @@ router.use(requireScope('genkit'));
 router.post('/completions', genkitController.createCompletion);
 router.post('/completions/stream', genkitController.streamCompletion);
 
-// Health check
-router.get('/health', genkitController.checkGenkitHealth);
-
 export default router;

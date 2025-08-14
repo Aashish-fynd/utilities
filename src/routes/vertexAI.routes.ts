@@ -21,7 +21,4 @@ router.post('/text2image', vertexAIController.text2Image);
 router.post('/image2video', vertexAIController.image2Video);
 router.post('/text2video', vertexAIController.text2Video);
 
-// Health check
-router.get('/health', vertexAIController.checkVertexAIHealth);
-
 export default router;

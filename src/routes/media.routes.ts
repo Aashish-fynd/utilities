@@ -87,7 +87,4 @@ router.post('/speech-to-text', mediaController.speechToText);
  */
 router.post('/text-to-speech', mediaController.textToSpeech);
 
-// Health check
-router.get('/health', mediaController.checkMediaHealth);
-
 export default router;

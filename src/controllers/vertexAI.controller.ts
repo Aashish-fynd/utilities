@@ -1,9 +1,10 @@
-import { Request, Response, RequestHandler } from 'express';
+import { Response } from 'express';
 import { z } from 'zod';
 import { vertexAIService } from '@/services/vertexAI.service.js';
 import { asyncHandler } from '@/middleware/errorHandler.js';
 import { AuthRequest } from '@/middleware/auth.js';
 import { logger } from '@/utils/logger.js';
+import { MODELS } from '@/constants';
 
 // Validation schemas
 const text2ImageSchema = z.object({
@@ -12,8 +13,7 @@ const text2ImageSchema = z.object({
   numImages: z.number().int().min(1).max(4).optional(),
   width: z.number().int().min(256).max(2048).optional(),
   height: z.number().int().min(256).max(2048).optional(),
-  guidanceScale: z.number().min(1).max(20).optional(),
-  seed: z.number().int().optional(),
+  model: z.enum(Object.values(MODELS.TEXT_TO_IMAGE)),
 });
 
 const image2VideoSchema = z.object({
@@ -23,6 +23,7 @@ const image2VideoSchema = z.object({
   fps: z.number().int().min(12).max(60).optional(),
   width: z.number().int().min(256).max(1920).optional(),
   height: z.number().int().min(256).max(1080).optional(),
+  model: z.enum(Object.values(MODELS.TEXT_TO_VIDEO)),
 });
 
 const text2VideoSchema = z.object({
@@ -31,6 +32,7 @@ const text2VideoSchema = z.object({
   fps: z.number().int().min(12).max(60).optional(),
   width: z.number().int().min(256).max(1920).optional(),
   height: z.number().int().min(256).max(1080).optional(),
+  model: z.enum(Object.values(MODELS.TEXT_TO_VIDEO)),
 });
 
 /**
@@ -49,6 +51,10 @@ const text2VideoSchema = z.object({
  *             properties:
  *               prompt:
  *                 type: string
+ *               model:
+ *                 type: string
+ *                 enum:
+ *                   - ${Object.values(MODELS.TEXT_TO_IMAGE).join(', ')}
  *               negativePrompt:
  *                 type: string
  *               numImages:
@@ -87,9 +93,92 @@ export const text2Image = asyncHandler(async (req: AuthRequest, res: Response) =
  *   post:
  *     summary: Generate a short video from an input image
  *     tags: [VertexAI]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [image]
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 description: Base64-encoded image bytes
+ *                 example: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+ *               prompt:
+ *                 type: string
+ *                 description: Optional text prompt to guide video generation
+ *                 maxLength: 1000
+ *                 example: "Make the image come to life with gentle movement"
+ *               duration:
+ *                 type: number
+ *                 description: Duration of the generated video in seconds
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 default: 5
+ *                 example: 5
+ *               fps:
+ *                 type: integer
+ *                 description: Frames per second for the generated video
+ *                 minimum: 12
+ *                 maximum: 60
+ *                 default: 24
+ *                 example: 24
+ *               width:
+ *                 type: integer
+ *                 description: Width of the generated video in pixels
+ *                 minimum: 256
+ *                 maximum: 1920
+ *                 default: 1024
+ *                 example: 1024
+ *               height:
+ *                 type: integer
+ *                 description: Height of the generated video in pixels
+ *                 minimum: 256
+ *                 maximum: 1080
+ *                 default: 576
+ *                 example: 576
  *     responses:
  *       200:
- *         description: Generated video
+ *         description: Generated video data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     video:
+ *                       type: string
+ *                       description: Base64-encoded video bytes
+ *                     mimeType:
+ *                       type: string
+ *                       example: "video/mp4"
+ *                     duration:
+ *                       type: number
+ *                       example: 5.0
+ *                     fps:
+ *                       type: integer
+ *                       example: 24
+ *                     width:
+ *                       type: integer
+ *                       example: 1024
+ *                     height:
+ *                       type: integer
+ *                       example: 576
+ *                     model:
+ *                       type: string
+ *                       example: "veo-3.0-generate-001"
+ *       400:
+ *         description: Invalid input parameters
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Insufficient permissions
  */
 export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = image2VideoSchema.parse(req.body);
@@ -113,9 +202,86 @@ export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) 
  *   post:
  *     summary: Generate a short video from a text prompt
  *     tags: [VertexAI]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [prompt]
+ *             properties:
+ *               prompt:
+ *                 type: string
+ *                 description: Text prompt describing the video to generate
+ *                 minLength: 1
+ *                 maxLength: 1000
+ *                 example: "A serene mountain landscape with flowing clouds and gentle wind"
+ *               duration:
+ *                 type: number
+ *                 description: Duration of the generated video in seconds
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 default: 5
+ *                 example: 5
+ *               fps:
+ *                 type: integer
+ *                 description: Frames per second for the generated video
+ *                 minimum: 12
+ *                 maximum: 60
+ *                 default: 24
+ *                 example: 24
+ *               width:
+ *                 type: integer
+ *                 description: Width of the generated video in pixels
+ *                 minimum: 256
+ *                 maximum: 1920
+ *                 default: 1024
+ *                 example: 1024
+ *               height:
+ *                 type: integer
+ *                 description: Height of the generated video in pixels
+ *                 minimum: 256
+ *                 maximum: 1080
+ *                 default: 576
+ *                 example: 576
  *     responses:
  *       200:
- *         description: Generated video
+ *         description: Generated video data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     video:
+ *                       type: string
+ *                       description: Base64-encoded video bytes
+ *                     mimeType:
+ *                       type: string
+ *                       example: "video/mp4"
+ *                     duration:
+ *                       type: number
+ *                       example: 5.0
+ *                     fps:
+ *                       type: integer
+ *                       example: 24
+ *                     width:
+ *                       type: integer
+ *                       example: 1024
+ *                     height:
+ *                       type: integer
+ *                       example: 576
+ *       400:
+ *         description: Invalid input parameters
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Insufficient permissions
  */
 export const text2Video = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = text2VideoSchema.parse(req.body);
@@ -130,16 +296,5 @@ export const text2Video = asyncHandler(async (req: AuthRequest, res: Response) =
   res.json({
     status: 'success',
     data: result,
-  });
-});
-
-// Health check endpoint for Vertex AI
-export const checkVertexAIHealth: RequestHandler = asyncHandler(async (_req: Request, res: Response) => {
-  // You could add actual health checks here
-  res.json({
-    status: 'success',
-    service: 'vertex-ai',
-    healthy: true,
-    timestamp: new Date().toISOString(),
   });
 });

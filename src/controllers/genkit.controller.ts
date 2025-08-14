@@ -1,4 +1,4 @@
-import { Request, Response, RequestHandler } from 'express';
+import { Response } from 'express';
 import { z } from 'zod';
 import { genkitService } from '@/services/genkit.service.js';
 import { asyncHandler } from '@/middleware/errorHandler.js';
@@ -33,12 +33,90 @@ const completionSchema = z.object({
  *             properties:
  *               prompt:
  *                 type: string
+ *                 description: The text prompt to complete
+ *                 minLength: 1
+ *                 maxLength: 10000
+ *                 example: "Explain machine learning in simple terms"
+ *               systemPrompt:
+ *                 type: string
+ *                 description: System prompt to set the AI's behavior
+ *                 maxLength: 2000
+ *                 example: "You are a helpful assistant that explains complex topics simply"
+ *               maxTokens:
+ *                 type: integer
+ *                 description: Maximum number of tokens to generate
+ *                 minimum: 1
+ *                 maximum: 4096
+ *                 default: 2048
+ *                 example: 2048
+ *               temperature:
+ *                 type: number
+ *                 description: Controls randomness in generation (0 = deterministic, 2 = very random)
+ *                 minimum: 0
+ *                 maximum: 2
+ *                 default: 0.7
+ *                 example: 0.7
+ *               topP:
+ *                 type: number
+ *                 description: Nucleus sampling parameter (0-1)
+ *                 minimum: 0
+ *                 maximum: 1
+ *                 default: 0.9
+ *                 example: 0.9
+ *               topK:
+ *                 type: integer
+ *                 description: Top-k sampling parameter
+ *                 minimum: 1
+ *                 maximum: 100
+ *                 default: 40
+ *                 example: 40
+ *               stopSequences:
+ *                 type: array
+ *                 description: Sequences that stop generation when encountered
+ *                 items:
+ *                   type: string
+ *                 maxItems: 5
+ *                 example: ["END", "STOP"]
  *               stream:
  *                 type: boolean
+ *                 description: Whether to stream the response as Server-Sent Events
  *                 default: false
+ *                 example: false
  *     responses:
  *       200:
  *         description: Completion result or SSE stream when stream=true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     text:
+ *                       type: string
+ *                       description: Generated completion text
+ *                     usage:
+ *                       type: object
+ *                       properties:
+ *                         promptTokens:
+ *                           type: integer
+ *                           example: 10
+ *                         completionTokens:
+ *                           type: integer
+ *                           example: 50
+ *                         totalTokens:
+ *                           type: integer
+ *                           example: 60
+ *       400:
+ *         description: Invalid input parameters
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Insufficient permissions
  */
 export const createCompletion = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = completionSchema.parse(req.body);
@@ -150,15 +228,4 @@ export const streamCompletion = asyncHandler(async (req: AuthRequest, res: Respo
     );
     res.end();
   }
-});
-
-// Health check endpoint for Genkit
-export const checkGenkitHealth: RequestHandler = asyncHandler(async (_req: Request, res: Response) => {
-  res.json({
-    status: 'success',
-    service: 'genkit',
-    healthy: true,
-    model: 'gemini-1.5-pro',
-    timestamp: new Date().toISOString(),
-  });
 });
