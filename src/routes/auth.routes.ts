@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { validate } from '@/middleware/validation.js';
-import { asyncHandler } from '@/middleware/errorHandler.js';
-import { authService } from '@/services/auth.service.js';
-import { authenticate, requireAdmin } from '@/middleware/auth.js';
-import { UsageLog } from '@/models/UsageLog.js';
+import { validate } from '@/middleware/validation';
+import { asyncHandler } from '@/middleware/errorHandler';
+import { authService } from '@/services/auth.service';
+import { authenticate, requireAdmin } from '@/middleware/auth';
+import { UsageLog } from '@/models/UsageLog';
 
 const router: Router = Router();
 

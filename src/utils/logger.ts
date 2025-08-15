@@ -1,25 +1,18 @@
 import winston from 'winston';
-import { config } from '@/config/index.js';
+import { config } from '@/config/index';
 
-/**
- * Application logger configured with winston.
- * Logs to console in development and to files in production.
- */
+const level = config.LOG_LEVEL || 'info';
+
 export const logger = winston.createLogger({
-	level: config.LOG_LEVEL,
-	format: winston.format.combine(
-		winston.format.timestamp(),
-		winston.format.errors({ stack: true }),
-		winston.format.json()
-	),
-	transports: [
-		new winston.transports.Console({
-			format: winston.format.combine(
-				winston.format.colorize(),
-				winston.format.simple()
-			),
-		}),
-	],
+  level,
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ level, message, timestamp, ...meta }) => {
+      const rest = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+      return `${timestamp} [${level.toUpperCase()}] ${message}${rest}`;
+    })
+  ),
+  transports: [new winston.transports.Console()],
 });
 
 // Create a stream object with a 'write' function for Morgan

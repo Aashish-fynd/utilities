@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
-import vertexAIRoutes from '@/routes/vertexAI.routes.js';
-import genkitRoutes from '@/routes/genkit.routes.js';
-import audioRoutes from '@/routes/media.routes.js';
-import authRoutes from '@/routes/auth.routes.js';
-import { MODELS } from '@/constants/index.js';
-import { config } from '@/config/index.js';
+import vertexAIRoutes from '@/routes/vertexAI.routes';
+import genkitRoutes from '@/routes/genkit.routes';
+import audioRoutes from '@/routes/media.routes';
+import authRoutes from '@/routes/auth.routes';
+import { MODELS } from '@/constants/index';
+import { config } from '@/config/index';
 
 const router: Router = Router();
 

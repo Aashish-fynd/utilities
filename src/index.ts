@@ -4,14 +4,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import { config, isProduction } from '@/config/index.js';
-import { logger } from '@/utils/logger.js';
-import { errorHandler, notFoundHandler } from '@/middleware/errorHandler.js';
-import routes from '@/routes/index.js';
+import { config, isProduction } from '@/config/index';
+import { logger } from '@/utils/logger';
+import { errorHandler, notFoundHandler } from '@/middleware/errorHandler';
+import routes from '@/routes/index';
 import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from '@/utils/swagger.js';
-import { connectDb } from '@/db/mongoose.js';
-import { UsageLog } from '@/models/UsageLog.js';
+import { swaggerSpec } from '@/utils/swagger';
+import { connectDb } from '@/db/mongoose';
 
 // Create Express app
 const app: Express = express();
@@ -80,39 +79,6 @@ app.use((req, _res, next) => {
     ip: req.ip,
     userAgent: req.get('user-agent'),
   });
-  next();
-});
-
-// Usage logging after response (only generation endpoints)
-app.use((req: any, res, next) => {
-  const start = Date.now();
-  const originalEnd: any = res.end;
-  res.end = function (this: any, chunk?: any, encoding?: any) {
-    try {
-      const durationMs = Date.now() - start;
-      const statusCode = res.statusCode || 200;
-      const user = (req as any).user;
-      const path: string = req.path || '';
-      const method: string = req.method || '';
-      // Log only generations usage: genkit text and vertex-ai generation endpoints
-      const isGeneration = path.startsWith('/api/v1/genkit') || path.startsWith('/api/v1/vertex-ai');
-      if (isGeneration) {
-        UsageLog.create({
-          userId: user?.id ? user.id : undefined,
-          tokenId: user?.tokenId ? user.tokenId : undefined,
-          route: path,
-          method,
-          statusCode,
-          ip: req.ip,
-          userAgent: req.get('user-agent'),
-          durationMs,
-        }).catch(() => {});
-      }
-    } catch {
-      // ignore logging errors
-    }
-    return originalEnd.apply(this, [chunk, encoding]);
-  } as any;
   next();
 });
 

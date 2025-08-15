@@ -1,12 +1,12 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Types } from 'mongoose';
-import { config } from '@/config/index.js';
-import { User, IUser } from '@/models/User.js';
-import { Token, IToken } from '@/models/Token.js';
-import { RefreshToken, IRefreshToken } from '@/models/RefreshToken.js';
-import { TokenRequest, ITokenRequest, TokenRequestStatus } from '@/models/TokenRequest.js';
-import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '@/utils/errors.js';
+import { config } from '@/config/index';
+import { User, IUser } from '@/models/User';
+import { Token, IToken } from '@/models/Token';
+import { RefreshToken, IRefreshToken } from '@/models/RefreshToken';
+import { TokenRequest, ITokenRequest, TokenRequestStatus } from '@/models/TokenRequest';
+import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '@/utils/errors';
 
 export interface JwtPayload {
   sub: string; // user id

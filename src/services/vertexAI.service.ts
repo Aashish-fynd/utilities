@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
-import { logger } from '@/utils/logger.js';
-import { ExternalServiceError } from '@/utils/errors.js';
-import { ai } from '@/services/genkit.service.js';
-import { config } from '@/config/index.js';
+import { logger } from '@/utils/logger';
+import { ExternalServiceError } from '@/utils/errors';
+import { ai } from '@/services/genkit.service';
+import { config } from '@/config/index';
 import axios from 'axios';
 
 interface ImageGenerationParams {

@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { config } from '@/config/index.js';
-import { AuthenticationError, AuthorizationError } from '@/utils/errors.js';
+import { config } from '@/config/index';
+import { AuthenticationError, AuthorizationError } from '@/utils/errors';
 import jwt from 'jsonwebtoken';
-import { Token } from '@/models/Token.js';
-import { User } from '@/models/User.js';
+import { Token } from '@/models/Token';
+import { User } from '@/models/User';
 
 export interface AuthRequest extends Request {
   user?: {

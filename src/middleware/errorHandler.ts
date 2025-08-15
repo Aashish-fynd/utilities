@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
-import { AppError } from '@/utils/errors.js';
-import { isProduction } from '@/config/index.js';
+import { AppError } from '@/utils/errors';
+import { isProduction } from '@/config/index';
 
 export const asyncHandler = <T extends Request>(fn: (req: T, res: Response, next: NextFunction) => Promise<void | any>) => {
 	return (req: T, res: Response, next: NextFunction) => {

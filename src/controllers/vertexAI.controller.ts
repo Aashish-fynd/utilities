@@ -1,10 +1,10 @@
 import { Response } from 'express';
 import { z } from 'zod';
-import { vertexAIService } from '@/services/vertexAI.service.js';
-import { asyncHandler } from '@/middleware/errorHandler.js';
-import { AuthRequest } from '@/middleware/auth.js';
-import { logger } from '@/utils/logger.js';
-import { MODELS } from '@/constants/index.js';
+import { vertexAIService } from '@/services/vertexAI.service';
+import { asyncHandler } from '@/middleware/errorHandler';
+import { AuthRequest } from '@/middleware/auth';
+import { logger } from '@/utils/logger';
+import { MODELS } from '@/constants/index';
 
 // Validation schemas
 const text2ImageSchema = z.object({
