@@ -4,6 +4,7 @@ import { asyncHandler } from '@/middleware/errorHandler';
 import { AuthRequest } from '@/middleware/auth';
 import { logger } from '@/utils/logger';
 import { mediaService } from '@/services/media.service';
+import { uploadToCloudinary } from '@/services/cloudinary.service';
 
 // Validation schemas
 const speechToTextSchema = z.object({
@@ -29,6 +30,8 @@ const textToSpeechSchema = z.object({
       volumeGainDb: z.number().optional(),
     })
     .optional(),
+  uploadToCloudinary: z.boolean().optional(),
+  cloudinaryFolder: z.string().optional(),
 });
 
 /**
@@ -47,11 +50,7 @@ export const speechToText = asyncHandler(async (req: AuthRequest, res: Response)
   });
 
   const result = await mediaService.transcribe(params);
-
-  res.json({
-    status: 'success',
-    data: result,
-  });
+  return res.json({ status: 'success', data: result });
 });
 
 /**
@@ -71,8 +70,12 @@ export const textToSpeech = asyncHandler(async (req: AuthRequest, res: Response)
 
   const result = await mediaService.synthesize(params);
 
-  res.json({
-    status: 'success',
-    data: result,
-  });
+  if (params.uploadToCloudinary) {
+    const folder = params.cloudinaryFolder;
+    const dataUrl = `data:${result.mimeType};base64,${result.audioContent}`;
+    const url = await uploadToCloudinary({ file: dataUrl, resourceType: 'raw', folder });
+    return res.json({ status: 'success', data: { url } });
+  }
+
+  return res.json({ status: 'success', data: result });
 });
