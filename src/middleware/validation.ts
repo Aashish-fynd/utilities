@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodError } from 'zod';
+import { ValidationError } from '@/utils/errors.js';
 
 type ValidationTarget = 'body' | 'query' | 'params';
 
 export const validate = (schema: z.ZodSchema, target: ValidationTarget = 'body') => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     try {
       const data = req[target];
       const validated = schema.parse(data);
@@ -16,7 +17,7 @@ export const validate = (schema: z.ZodSchema, target: ValidationTarget = 'body')
           field: err.path.join('.'),
           message: err.message,
         }));
-        res.status(400).json({ status: 'error', message: 'Validation failed', errors });
+        next(new ValidationError('Validation failed', errors));
       } else {
         next(error);
       }
