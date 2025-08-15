@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { authenticate, requireScope } from '@/middleware/auth';
-import { usageLogger } from '@/middleware/usage';
 import * as vertexAIController from '@/controllers/vertexAI.controller';
 import { validate } from '@/middleware/validation';
 
@@ -16,27 +15,52 @@ const router: Router = Router();
 router.use(authenticate);
 router.use(requireScope('vertex-ai'));
 
-// Log usage for all endpoints under this router
-router.use(usageLogger());
-
-// Image generation
 /**
  * @openapi
  * /api/v1/vertex-ai/text2image:
  *   post:
+ *     summary: Generate images from text prompts
+ *     description: Generate high-quality images from text descriptions using Vertex AI's image generation models
+ *     tags: [VertexAI]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               uploadToCloudinary:
- *                 type: boolean
- *                 description: When true, upload generated images to Cloudinary and return only the URLs
- *               cloudinaryFolder:
- *                 type: string
- *                 description: Optional Cloudinary folder to upload into
+ *             $ref: '#/components/schemas/Text2ImageRequest'
+ *     responses:
+ *       200:
+ *         description: Images generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Text2ImageResponse'
+ *       400:
+ *         description: Invalid request parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden - insufficient scope
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Image generation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post(
   '/text2image',
@@ -44,24 +68,57 @@ router.post(
   vertexAIController.text2Image
 );
 
-// Video generation
 /**
  * @openapi
  * /api/v1/vertex-ai/image2video:
  *   post:
+ *     summary: Generate video from image and text prompt
+ *     description: Create a video animation from a base image and text description using Vertex AI's video generation models
+ *     tags: [VertexAI]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               uploadToCloudinary:
- *                 type: boolean
- *                 description: When true, upload generated video to Cloudinary and return only the URL
- *               cloudinaryFolder:
- *                 type: string
- *                 description: Optional Cloudinary folder to upload into
+ *             $ref: '#/components/schemas/VideoGenerationRequest'
+ *           example:
+ *             prompt: "Make the cat in the image start playing with a ball"
+ *             image: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+ *             uploadToCloudinary: true
+ *             cloudinaryFolder: "ai-videos"
+ *     responses:
+ *       200:
+ *         description: Video generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VideoGenerationResponse'
+ *       400:
+ *         description: Invalid request parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden - insufficient scope
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Video generation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post(
   '/image2video',
@@ -72,19 +129,52 @@ router.post(
  * @openapi
  * /api/v1/vertex-ai/text2video:
  *   post:
+ *     summary: Generate video from text prompt
+ *     description: Create a video directly from a text description using Vertex AI's video generation models
+ *     tags: [VertexAI]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               uploadToCloudinary:
- *                 type: boolean
- *                 description: When true, upload generated video to Cloudinary and return only the URL
- *               cloudinaryFolder:
- *                 type: string
- *                 description: Optional Cloudinary folder to upload into
+ *             $ref: '#/components/schemas/VideoGenerationRequest'
+ *           example:
+ *             prompt: "A golden retriever running through a field of sunflowers at sunset"
+ *             uploadToCloudinary: true
+ *             cloudinaryFolder: "ai-videos"
+ *     responses:
+ *       200:
+ *         description: Video generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VideoGenerationResponse'
+ *       400:
+ *         description: Invalid request parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden - insufficient scope
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Video generation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post(
   '/text2video',

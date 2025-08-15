@@ -32,12 +32,12 @@ const envSchema = z.object({
   API_KEY: z.string().optional(),
 
   // Database (MongoDB)
-  MONGODB_URI: z.string().default('mongodb://localhost:27017'),
-  MONGODB_DB_NAME: z.string().default('vertex_ai_utilities'),
+  MONGODB_URI: z.string(),
+  MONGODB_DB_NAME: z.string(),
 
   // JWT & Token Lifetimes
-  JWT_ACCESS_SECRET: z.string().default('dev-access-secret-change-me'),
-  JWT_REFRESH_SECRET: z.string().default('dev-refresh-secret-change-me'),
+  JWT_ACCESS_SECRET: z.string(),
+  JWT_REFRESH_SECRET: z.string(),
   ACCESS_TOKEN_TTL_MINUTES: z.string().default('15').transform(Number),
   REFRESH_TOKEN_TTL_DAYS: z.string().default('90').transform(Number), // default 3 months
   REFRESH_TOKEN_MAX_DAYS: z.string().default('90').transform(Number), // max 3 months
@@ -53,11 +53,10 @@ const envSchema = z.object({
   SWAGGER_SERVER_URL: z.string().optional(),
 
   // Cloudinary
-  CLOUDINARY_CLOUD_NAME: z.string().optional(),
-  CLOUDINARY_API_KEY: z.string().optional(),
-  CLOUDINARY_API_SECRET: z.string().optional(),
-  CLOUDINARY_UPLOAD_PRESET: z.string().optional(),
-  CLOUDINARY_FOLDER: z.string().default('generated'),
+  CLOUDINARY_CLOUD_NAME: z.string(),
+  CLOUDINARY_API_KEY: z.string(),
+  CLOUDINARY_API_SECRET: z.string(),
+  CLOUDINARY_FOLDER: z.string(),
 
   GEMINI_API_KEY: z.string(),
 });

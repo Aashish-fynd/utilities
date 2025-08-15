@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { genkitService } from '@/services/genkit.service';
 import { asyncHandler } from '@/middleware/errorHandler';
 import { AuthRequest } from '@/middleware/auth';
-import { logger } from '@/utils/logger';
+import { logUsage } from '@/utils/usage';
 
 // Validation schema for completion requests
 export const completionSchema = z.object({
@@ -121,12 +121,6 @@ export const completionSchema = z.object({
 export const createCompletion = asyncHandler(async (req: AuthRequest, res: Response) => {
   const requestBody = req.body;
 
-  logger.info('Completion request', {
-    userId: req.user?.id,
-    stream: requestBody.stream,
-    promptLength: requestBody.prompt.length,
-  });
-
   if (requestBody.stream) {
     // Set up SSE headers for streaming
     res.setHeader('Content-Type', 'text/event-stream');
@@ -159,10 +153,20 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
       });
       res.write(`data: ${errorEvent}\n\n`);
       res.end();
+    } finally {
+      logUsage({
+        req,
+        res,
+      });
     }
   } else {
     // Non-streaming response
     const result = await genkitService.generateCompletion(requestBody);
+
+    logUsage({
+      req,
+      res,
+    });
 
     res.json({
       status: 'success',
@@ -220,5 +224,10 @@ export const streamCompletion = asyncHandler(async (req: AuthRequest, res: Respo
       }) + '\n'
     );
     res.end();
+  } finally {
+    logUsage({
+      req,
+      res,
+    });
   }
 });

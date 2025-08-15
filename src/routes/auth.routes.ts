@@ -157,7 +157,53 @@ router.post(
   })
 );
 
-// Refresh token endpoint
+/**
+ * @openapi
+ * /api/v1/auth/refresh:
+ *   post:
+ *     summary: Refresh access token using refresh token
+ *     description: Exchange a valid refresh token for a new access token and refresh token pair
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [refreshToken]
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: Valid refresh token
+ *                 minLength: 20
+ *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     responses:
+ *       200:
+ *         description: New tokens generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                     refreshToken:
+ *                       type: string
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *       400:
+ *         description: Invalid refresh token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 const refreshSchema = z.object({ refreshToken: z.string().min(20) });
 router.post(
   '/refresh',
@@ -169,7 +215,52 @@ router.post(
   })
 );
 
-// Token details endpoint
+/**
+ * @openapi
+ * /api/v1/auth/token:
+ *   get:
+ *     summary: Get current token details
+ *     description: Retrieve details about the current access token including token information and associated user
+ *     tags: [Auth]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token details retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token:
+ *                       $ref: '#/components/schemas/Token'
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Missing access token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Token not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 router.get(
   '/token',
   authenticate,
@@ -191,7 +282,64 @@ router.get(
   })
 );
 
-// Usage logs: admin or current user
+/**
+ * @openapi
+ * /api/v1/auth/usage:
+ *   get:
+ *     summary: Get usage logs
+ *     description: Retrieve usage logs for API endpoints. Regular users can only see their own logs, while admins can view all logs
+ *     tags: [Auth]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         description: Filter by user ID (admin only)
+ *         example: "674a1234567890abcdef1234"
+ *       - in: query
+ *         name: tokenId
+ *         schema:
+ *           type: string
+ *         description: Filter by token ID
+ *         example: "674a1234567890abcdef1234"
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 200
+ *           default: 50
+ *         description: Maximum number of logs to return
+ *     responses:
+ *       200:
+ *         description: Usage logs retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/UsageLog'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       400:
+ *         description: Invalid query parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 const usageQuerySchema = z.object({
   userId: z.string().optional(),
   tokenId: z.string().optional(),

@@ -6,12 +6,12 @@ import { AuthRequest } from '@/middleware/auth';
 import { logger } from '@/utils/logger';
 import { MODELS } from '@/constants/index';
 import { uploadToCloudinary } from '@/services/cloudinary.service';
+import { logUsage } from '@/utils/usage';
 
 // Validation schemas
 export const text2ImageSchema = z.object({
   prompt: z.string().min(1).max(1000),
-  negativePrompt: z.string().max(1000).optional(),
-  numImages: z.number().int().min(1).max(4).optional(),
+  sampleCount: z.number().int().min(1).max(4).optional(),
   width: z.number().int().min(256).max(2048).optional(),
   height: z.number().int().min(256).max(2048).optional(),
   model: z.enum(Object.values(MODELS.TEXT_TO_IMAGE)),
@@ -86,28 +86,32 @@ export const text2Image = asyncHandler(async (req: AuthRequest, res: Response) =
   const result = await vertexAIService.generateImage(requestBody);
 
   if (requestBody.uploadToCloudinary) {
-    const urls: string[] = [];
-
+    const promises = [];
     for (const item of (result as any).images || []) {
-      const base64: string | undefined =
-        item?.imageBytes || item?.bytesBase64Encoded || item?.base64 || undefined;
-      const mime: string = item?.mimeType || 'image/png';
-      const maybeDataUrl: string | undefined = item?.url;
+      const base64: string | undefined = item?.base64;
+      const mime: string = item?.mimeType;
 
       let fileForUpload: string | undefined = undefined;
-      if (typeof maybeDataUrl === 'string' && maybeDataUrl.startsWith('data:')) {
-        fileForUpload = maybeDataUrl;
-      } else if (base64) {
+      if (base64) {
         fileForUpload = `data:${mime};base64,${base64}`;
       }
 
       if (!fileForUpload) continue;
 
-      const url = await uploadToCloudinary({ file: fileForUpload, resourceType: 'image' });
-      urls.push(url);
+      promises.push(uploadToCloudinary({ file: fileForUpload, resourceType: 'image' }));
     }
 
-    return res.json({ status: 'success', data: { urls } });
+    const urls = await Promise.all(promises);
+
+    (result as any).images = urls;
+
+    logUsage({
+      req,
+      res,
+      data: result.output,
+    });
+
+    return res.json({ status: 'success', data: result });
   }
 
   return res.json({
@@ -221,9 +225,17 @@ export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) 
 
   if (requestBody.uploadToCloudinary) {
     const fileForUpload = (result as any).videoUrl as string; // should be data URL
-    const url = await uploadToCloudinary({ file: fileForUpload, resourceType: 'video' });
-    return res.json({ status: 'success', data: { url } });
+    (result as any).videoUrl = await uploadToCloudinary({
+      file: fileForUpload,
+      resourceType: 'video',
+    });
   }
+
+  logUsage({
+    req,
+    res,
+    data: result.output,
+  });
 
   return res.json({
     status: 'success',
@@ -321,18 +333,21 @@ export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) 
 export const text2Video = asyncHandler(async (req: AuthRequest, res: Response) => {
   const requestBody = req.body;
 
-  logger.info('Text to video request', {
-    userId: req.user?.id,
-    prompt: requestBody.prompt.substring(0, 50) + '...',
-  });
-
   const result = await vertexAIService.generateVideoFromText(requestBody);
 
   if (requestBody.uploadToCloudinary) {
     const fileForUpload = (result as any).videoUrl as string; // should be data URL
-    const url = await uploadToCloudinary({ file: fileForUpload, resourceType: 'video' });
-    return res.json({ status: 'success', data: { url } });
+    (result as any).videoUrl = await uploadToCloudinary({
+      file: fileForUpload,
+      resourceType: 'video',
+    });
   }
+
+  logUsage({
+    req,
+    res,
+    data: result.output,
+  });
 
   return res.json({
     status: 'success',

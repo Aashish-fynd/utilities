@@ -79,6 +79,7 @@ app.use((req, _res, next) => {
     ip: req.ip,
     userAgent: req.get('user-agent'),
   });
+  (req as any).startTime = Date.now();
   next();
 });
 

@@ -30,29 +30,6 @@ router.get('/', (_req: Request, res: Response) => {
     status: 'success',
     message: 'Vertex AI Utilities API',
     version: '1.1.0',
-    endpoints: {
-      vertexAI: {
-        text2image: 'POST /api/v1/vertex-ai/text2image',
-        image2video: 'POST /api/v1/vertex-ai/image2video',
-        text2video: 'POST /api/v1/vertex-ai/text2video',
-      },
-      genkit: {
-        completions: 'POST /api/v1/genkit/completions',
-        streamCompletions: 'POST /api/v1/genkit/completions/stream',
-      },
-      media: {
-        speechToText: 'POST /api/v1/media/speech-to-text',
-        textToSpeech: 'POST /api/v1/media/text-to-speech',
-      },
-      auth: {
-        request: 'POST /api/v1/auth/request',
-        listRequests: 'GET /api/v1/auth/requests?status=pending',
-        approve: 'POST /api/v1/auth/approve',
-        reject: 'POST /api/v1/auth/reject',
-        refresh: 'POST /api/v1/auth/refresh',
-        tokenDetails: 'GET /api/v1/auth/token',
-      },
-    },
     docs: '/api/docs',
   });
 });
@@ -69,9 +46,24 @@ router.get('/', (_req: Request, res: Response) => {
  */
 router.get('/api/v1/apis', (_req: Request, res: Response) => {
   const list = [
-    { path: 'generation/text/*', method: 'POST', description: 'Text generation via Genkit model', model: config.GENKIT_MODEL },
-    { path: 'generation/image/*', method: 'POST', description: 'Text to image', models: Object.values(MODELS.TEXT_TO_IMAGE) },
-    { path: 'generation/video/*', method: 'POST', description: 'Text/Image to video', models: Object.values(MODELS.TEXT_TO_VIDEO) },
+    {
+      path: 'generation/text/*',
+      method: 'POST',
+      description: 'Text generation via Genkit model',
+      model: Object.values(MODELS.COMPLETION),
+    },
+    {
+      path: 'generation/image/*',
+      method: 'POST',
+      description: 'Text to image',
+      models: Object.values(MODELS.TEXT_TO_IMAGE),
+    },
+    {
+      path: 'generation/video/*',
+      method: 'POST',
+      description: 'Text/Image to video',
+      models: Object.values(MODELS.TEXT_TO_VIDEO),
+    },
   ];
   res.json({ status: 'success', data: list });
 });
@@ -105,20 +97,43 @@ router.get('/api/v1/apis/generation/:category/:model', (req: Request, res: Respo
   }
   if (category === 'text') {
     if (model === '*' || model === config.GENKIT_MODEL) {
-      return res.json({ status: 'success', data: { path: `generation/text/${model}`, method: 'POST', model: model === '*' ? config.GENKIT_MODEL : model } });
+      return res.json({
+        status: 'success',
+        data: {
+          path: `generation/text/${model}`,
+          method: 'POST',
+          model: model === '*' ? config.GENKIT_MODEL : model,
+        },
+      });
     }
     return res.status(404).json({ status: 'error', message: 'Model not found' });
   }
   if (category === 'image') {
     const models = Object.values(MODELS.TEXT_TO_IMAGE);
-    if (model === '*') return res.json({ status: 'success', data: { path: `generation/image/*`, method: 'POST', models } });
-    if (models.includes(model)) return res.json({ status: 'success', data: { path: `generation/image/${model}`, method: 'POST', model } });
+    if (model === '*')
+      return res.json({
+        status: 'success',
+        data: { path: `generation/image/*`, method: 'POST', models },
+      });
+    if (models.includes(model))
+      return res.json({
+        status: 'success',
+        data: { path: `generation/image/${model}`, method: 'POST', model },
+      });
     return res.status(404).json({ status: 'error', message: 'Model not found' });
   }
   if (category === 'video') {
     const models = Object.values(MODELS.TEXT_TO_VIDEO);
-    if (model === '*') return res.json({ status: 'success', data: { path: `generation/video/*`, method: 'POST', models } });
-    if (models.includes(model)) return res.json({ status: 'success', data: { path: `generation/video/${model}`, method: 'POST', model } });
+    if (model === '*')
+      return res.json({
+        status: 'success',
+        data: { path: `generation/video/*`, method: 'POST', models },
+      });
+    if (models.includes(model))
+      return res.json({
+        status: 'success',
+        data: { path: `generation/video/${model}`, method: 'POST', model },
+      });
     return res.status(404).json({ status: 'error', message: 'Model not found' });
   }
   return res.status(400).json({ status: 'error', message: 'Invalid request' });
@@ -136,7 +151,7 @@ router.get('/api/v1/apis/generation/:category/:model', (req: Request, res: Respo
  */
 // Health check endpoint
 router.get('/health', (_req: Request, res: Response) => {
-  res.json({
+  return res.json({
     status: 'success',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),

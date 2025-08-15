@@ -19,32 +19,47 @@ router.use(requireScope('media'));
  * /api/v1/media/speech-to-text:
  *   post:
  *     summary: Transcribe audio to text
+ *     description: Convert audio speech to text using Google Cloud Speech-to-Text API
  *     tags: [Media]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required: [audio, encoding, sampleRateHertz]
- *             properties:
- *               audio:
- *                 type: string
- *                 description: Base64-encoded audio bytes
- *               encoding:
- *                 type: string
- *                 enum: [LINEAR16, MP3, OGG_OPUS, MULAW, ALAW]
- *               sampleRateHertz:
- *                 type: integer
- *                 example: 16000
- *               languageCode:
- *                 type: string
- *                 example: en-US
+ *             $ref: '#/components/schemas/SpeechToTextRequest'
  *     responses:
  *       200:
- *         description: Transcription result
+ *         description: Transcription successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SpeechToTextResponse'
  *       400:
- *         description: Invalid input
+ *         description: Invalid request parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden - insufficient scope
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Speech transcription failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/speech-to-text', mediaController.speechToText);
 
@@ -53,43 +68,47 @@ router.post('/speech-to-text', mediaController.speechToText);
  * /api/v1/media/text-to-speech:
  *   post:
  *     summary: Synthesize speech from text
+ *     description: Convert text to natural-sounding speech using Google Cloud Text-to-Speech API
  *     tags: [Media]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required: [text]
- *             properties:
- *               text:
- *                 type: string
- *               voice:
- *                 type: object
- *                 properties:
- *                   languageCode:
- *                     type: string
- *                     example: en-US
- *                   name:
- *                     type: string
- *                     example: en-US-Neural2-D
- *               audioConfig:
- *                 type: object
- *                 properties:
- *                   audioEncoding:
- *                     type: string
- *                     enum: [MP3, OGG_OPUS, LINEAR16]
- *               uploadToCloudinary:
- *                 type: boolean
- *                 description: When true, upload the generated audio and return only the Cloudinary URL
- *               cloudinaryFolder:
- *                 type: string
- *                 description: Optional Cloudinary folder to upload into
+ *             $ref: '#/components/schemas/TextToSpeechRequest'
  *     responses:
  *       200:
- *         description: Synthesized audio or URL when uploaded to Cloudinary
+ *         description: Speech synthesis successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TextToSpeechResponse'
  *       400:
- *         description: Invalid input
+ *         description: Invalid request parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden - insufficient scope
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Speech synthesis failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/text-to-speech', mediaController.textToSpeech);
 

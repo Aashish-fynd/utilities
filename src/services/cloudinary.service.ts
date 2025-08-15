@@ -37,7 +37,6 @@ export async function uploadToCloudinary(options: {
   const cloudName = config.CLOUDINARY_CLOUD_NAME;
   const apiKey = config.CLOUDINARY_API_KEY;
   const apiSecret = config.CLOUDINARY_API_SECRET;
-  const uploadPreset = config.CLOUDINARY_UPLOAD_PRESET;
 
   if (!cloudName) {
     throw new Error('CLOUDINARY_CLOUD_NAME is not configured');
@@ -46,7 +45,7 @@ export async function uploadToCloudinary(options: {
   const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/${options.resourceType}/upload`;
 
   const timestamp = Math.floor(Date.now() / 1000);
-  const folder = options.folder || config.CLOUDINARY_FOLDER || 'generated';
+  const folder = config.CLOUDINARY_FOLDER;
 
   // Prefer signed uploads if apiKey and apiSecret are set; otherwise fall back to unsigned with preset
   let body: URLSearchParams;
@@ -66,13 +65,10 @@ export async function uploadToCloudinary(options: {
     if (folder) body.append('folder', folder);
     if (options.publicId) body.append('public_id', options.publicId);
     body.append('signature', signature);
-  } else if (uploadPreset) {
-    body = new URLSearchParams();
-    body.append('file', options.file);
-    body.append('upload_preset', uploadPreset);
-    if (folder) body.append('folder', folder);
   } else {
-    throw new Error('Cloudinary is not configured for uploads. Set API key/secret or an upload preset.');
+    throw new Error(
+      'Cloudinary is not configured for uploads. Set API key/secret or an upload preset.'
+    );
   }
 
   const response = await axios.post(endpoint, body.toString(), {

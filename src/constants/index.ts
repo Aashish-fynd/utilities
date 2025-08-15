@@ -12,4 +12,11 @@ export const MODELS = {
     IMAGEN_3_GENERATE: 'imagen-3.0-generate-002',
     IMAGEN_3_FAST: 'imagen-3.0-fast-generate-001',
   },
+  COMPLETION: {
+    GEMINI_2_5_PRO: 'gemini-2.5-pro',
+    GEMINI_2_5_FLASH: 'gemini-2.5-flash',
+    GEMINI_2_5_FLASH_LITE: 'gemini-2.5-flash-lite',
+    GEMINI_2_0_FLASH_PREVIEW_IMAGE: 'gemini-2.0-flash-preview-image-generation',
+    GEMINI_2_0_FLASH_LITE_PREVIEW: 'gemini-2.5-flash-lite-preview-06-17',
+  },
 };

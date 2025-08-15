@@ -26,18 +26,19 @@ export interface CompletionParams {
   topP?: number;
   topK?: number;
   stopSequences?: string[];
+  model: string;
 }
 
 export class GenkitService {
   async *streamCompletion(params: CompletionParams): AsyncGenerator<string, void, unknown> {
     try {
       logger.info('Starting streaming completion', {
-        model: config.GENKIT_MODEL,
+        model: params.model,
         promptLength: params.prompt.length,
       });
 
       const { stream } = ai.generateStream({
-        model: config.GENKIT_MODEL,
+        model: params.model,
         ...(params.systemPrompt ? { system: params.systemPrompt } : {}),
         messages: [{ role: 'user' as const, content: [{ text: params.prompt }] }],
         config: {
@@ -73,12 +74,12 @@ export class GenkitService {
   }> {
     try {
       logger.info('Generating completion', {
-        model: config.GENKIT_MODEL,
+        model: params.model,
         promptLength: params.prompt.length,
       });
 
       const response = await ai.generate({
-        model: config.GENKIT_MODEL,
+        model: params.model,
         prompt: params.prompt,
         system: params.systemPrompt,
         config: {
@@ -98,7 +99,7 @@ export class GenkitService {
           totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
         },
         metadata: {
-          model: config.GENKIT_MODEL,
+          model: params.model,
           finishReason: response.finishReason,
           timestamp: new Date().toISOString(),
         },
@@ -121,6 +122,7 @@ export class GenkitService {
           systemPrompt: z.string().optional(),
           maxTokens: z.number().optional(),
           temperature: z.number().optional(),
+          model: z.string(),
         }),
         outputSchema: z.object({
           text: z.string(),
@@ -136,6 +138,7 @@ export class GenkitService {
         systemPrompt?: string;
         maxTokens?: number;
         temperature?: number;
+        model: string;
       }) => {
         const response = await this.generateCompletion(input);
         return {
