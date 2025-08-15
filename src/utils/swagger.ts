@@ -122,6 +122,12 @@ const swaggerDefinition = {
                   },
                 },
               },
+              urls: {
+                type: 'array',
+                items: { type: 'string' },
+                description:
+                  'Returned when uploadToCloudinary=true: array of Cloudinary URLs for generated images',
+              },
             },
           },
         },

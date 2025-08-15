@@ -79,9 +79,15 @@ router.post('/speech-to-text', mediaController.speechToText);
  *                   audioEncoding:
  *                     type: string
  *                     enum: [MP3, OGG_OPUS, LINEAR16]
+ *               uploadToCloudinary:
+ *                 type: boolean
+ *                 description: When true, upload the generated audio and return only the Cloudinary URL
+ *               cloudinaryFolder:
+ *                 type: string
+ *                 description: Optional Cloudinary folder to upload into
  *     responses:
  *       200:
- *         description: Synthesized audio (base64)
+ *         description: Synthesized audio or URL when uploaded to Cloudinary
  *       400:
  *         description: Invalid input
  */
