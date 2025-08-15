@@ -1,8 +1,8 @@
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@/utils/logger.js';
-import { ExternalServiceError } from '@/utils/errors.js';
-import { ai } from '@/services/genkit.service.js';
-import { config } from '@/config/index.js';
+import { randomUUID } from 'crypto';
+import { logger } from '@/utils/logger';
+import { ExternalServiceError } from '@/utils/errors';
+import { ai } from '@/services/genkit.service';
+import { config } from '@/config/index';
 
 export interface TranscribeParams {
   audio: string; // base64
@@ -77,7 +77,7 @@ export class MediaService {
         ? [{ text: bestText }]
         : [];
 
-      const id = uuidv4();
+      const id = randomUUID();
       return {
         id,
         text: bestText,
@@ -137,7 +137,7 @@ export class MediaService {
 
       const audioContent = audioBuffer ? audioBuffer.toString('base64') : '';
 
-      const id = uuidv4();
+      const id = randomUUID();
       return {
         id,
         audioContent,

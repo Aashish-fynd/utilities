@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodError } from 'zod';
-import { ValidationError } from '@/utils/errors.js';
+import { ValidationError } from '@/utils/errors';
 
 type ValidationTarget = 'body' | 'query' | 'params';
 
@@ -9,7 +9,7 @@ export const validate = (schema: z.ZodSchema, target: ValidationTarget = 'body')
     try {
       const data = req[target];
       const validated = schema.parse(data);
-      req[target] = validated;
+      (req as any)[target] = validated;
       next();
     } catch (error) {
       if (error instanceof ZodError) {
@@ -17,7 +17,7 @@ export const validate = (schema: z.ZodSchema, target: ValidationTarget = 'body')
           field: err.path.join('.'),
           message: err.message,
         }));
-        next(new ValidationError(`Validation failed: ${JSON.stringify(errors)}`));
+        next(new ValidationError('Validation failed', errors));
       } else {
         next(error);
       }
@@ -32,7 +32,7 @@ export const paginationSchema = z.object({
 });
 
 export const idSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
 });
 
 export const fileUploadSchema = z.object({

@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { validate } from '@/middleware/validation.js';
-import { asyncHandler } from '@/middleware/errorHandler.js';
-import { authService } from '@/services/auth.service.js';
-import { authenticate, requireAdmin } from '@/middleware/auth.js';
+import { validate } from '@/middleware/validation';
+import { asyncHandler } from '@/middleware/errorHandler';
+import { authService } from '@/services/auth.service';
+import { authenticate, requireAdmin } from '@/middleware/auth';
+import { UsageLog } from '@/models/UsageLog';
 
 const router: Router = Router();
 
 const requestSchema = z.object({
-  email: z.e164(),
+  email: z.string().email(),
   apis: z.array(z.string()).min(1),
 });
 
@@ -49,8 +50,8 @@ router.post(
   validate(requestSchema),
   asyncHandler(async (req, res) => {
     const { email, apis } = req.body as z.infer<typeof requestSchema>;
-    const user = authService.findOrCreateUserByEmail(email);
-    const request = authService.createTokenRequest(user.id, apis);
+    const user = await authService.findOrCreateUserByEmail(email);
+    const request = await authService.createTokenRequest((user._id as any).toString(), apis);
     res.json({ status: 'success', data: { request } });
   })
 );
@@ -77,13 +78,13 @@ router.get(
   requireAdmin,
   asyncHandler(async (req, res) => {
     const status = req.query.status as 'pending' | 'approved' | 'rejected' | undefined;
-    const list = authService.listTokenRequests(status);
+    const list = await authService.listTokenRequests(status);
     res.json({ status: 'success', data: list });
   })
 );
 
 const decisionSchema = z.object({
-  requestId: z.string().uuid(),
+  requestId: z.string(),
   note: z.string().optional(),
 });
 
@@ -99,18 +100,17 @@ const decisionSchema = z.object({
  *         application/json:
  *           schema:
  *             type: object
- *             required: [requestId, note]
+ *             required: [requestId]
  *             properties:
  *               requestId:
  *                 type: string
- *                 format: uuid
  *                 description: The ID of the token request to approve
  *               note:
  *                 type: string
  *                 description: Optional admin note for the approval
  *     responses:
  *       200:
- *         description: Approved with token
+ *         description: Approved with tokens
  */
 router.post(
   '/approve',
@@ -119,8 +119,8 @@ router.post(
   validate(decisionSchema),
   asyncHandler(async (req, res) => {
     const { requestId, note } = req.body as z.infer<typeof decisionSchema>;
-    const { request, token } = authService.approveTokenRequest(requestId, note);
-    res.json({ status: 'success', data: { request, token } });
+    const result = await authService.approveTokenRequest(requestId, note);
+    res.json({ status: 'success', data: result });
   })
 );
 
@@ -136,11 +136,10 @@ router.post(
  *         application/json:
  *           schema:
  *             type: object
- *             required: [requestId, note]
+ *             required: [requestId]
  *             properties:
  *               requestId:
  *                 type: string
- *                 format: uuid
  *                 description: The ID of the token request to reject
  *               note:
  *                 type: string
@@ -153,8 +152,66 @@ router.post(
   validate(decisionSchema),
   asyncHandler(async (req, res) => {
     const { requestId, note } = req.body as z.infer<typeof decisionSchema>;
-    const updated = authService.rejectTokenRequest(requestId, note);
+    const updated = await authService.rejectTokenRequest(requestId, note);
     res.json({ status: 'success', data: updated });
+  })
+);
+
+// Refresh token endpoint
+const refreshSchema = z.object({ refreshToken: z.string().min(20) });
+router.post(
+  '/refresh',
+  validate(refreshSchema),
+  asyncHandler(async (req, res) => {
+    const { refreshToken } = req.body as z.infer<typeof refreshSchema>;
+    const tokens = await authService.rotateRefreshToken(refreshToken);
+    res.json({ status: 'success', data: tokens });
+  })
+);
+
+// Token details endpoint
+router.get(
+  '/token',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.substring('Bearer '.length).trim()
+      : undefined;
+    if (!token) {
+      res.status(400).json({ status: 'error', message: 'Missing access token' });
+      return;
+    }
+    const details = await authService.getTokenDetailsByAccessToken(token);
+    if (!details) {
+      res.status(404).json({ status: 'error', message: 'Token not found' });
+      return;
+    }
+    res.json({ status: 'success', data: { token: details.token, user: details.user } });
+  })
+);
+
+// Usage logs: admin or current user
+const usageQuerySchema = z.object({
+  userId: z.string().optional(),
+  tokenId: z.string().optional(),
+  limit: z.coerce.number().min(1).max(200).default(50),
+});
+router.get(
+  '/usage',
+  authenticate,
+  validate(usageQuerySchema, 'query'),
+  asyncHandler(async (req: any, res) => {
+    const { userId, tokenId, limit } = req.query as z.infer<typeof usageQuerySchema>;
+    const isAdmin = !!req.user?.isAdmin;
+    const filter: any = {};
+    if (userId) filter.userId = userId;
+    if (tokenId) filter.tokenId = tokenId;
+    if (!isAdmin) {
+      filter.userId = req.user?.id;
+    }
+    const logs = await UsageLog.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
+    res.json({ status: 'success', data: logs });
   })
 );
 

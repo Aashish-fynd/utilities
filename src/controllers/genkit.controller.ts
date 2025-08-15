@@ -1,9 +1,9 @@
 import { Response } from 'express';
 import { z } from 'zod';
-import { genkitService } from '@/services/genkit.service.js';
-import { asyncHandler } from '@/middleware/errorHandler.js';
-import { AuthRequest } from '@/middleware/auth.js';
-import { logger } from '@/utils/logger.js';
+import { genkitService } from '@/services/genkit.service';
+import { asyncHandler } from '@/middleware/errorHandler';
+import { AuthRequest } from '@/middleware/auth';
+import { logger } from '@/utils/logger';
 
 // Validation schema for completion requests
 const completionSchema = z.object({
@@ -153,7 +153,6 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
       res.write('data: {"type":"done","status":"completed"}\n\n');
       res.end();
     } catch (error) {
-      logger.error('Streaming error:', error);
       const errorEvent = JSON.stringify({
         type: 'error',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -186,11 +185,6 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
 export const streamCompletion = asyncHandler(async (req: AuthRequest, res: Response) => {
   const params = completionSchema.parse(req.body);
 
-  logger.info('Stream completion request', {
-    userId: req.user?.id,
-    promptLength: params.prompt.length,
-  });
-
   // Set headers for streaming JSON
   res.setHeader('Content-Type', 'application/x-ndjson');
   res.setHeader('Transfer-Encoding', 'chunked');
@@ -220,7 +214,6 @@ export const streamCompletion = asyncHandler(async (req: AuthRequest, res: Respo
 
     res.end();
   } catch (error) {
-    logger.error('Streaming error:', error);
     res.write(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error',

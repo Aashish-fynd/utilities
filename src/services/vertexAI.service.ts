@@ -1,8 +1,8 @@
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@/utils/logger.js';
-import { ExternalServiceError } from '@/utils/errors.js';
-import { ai } from '@/services/genkit.service.js';
-import { config } from '@/config';
+import { randomUUID } from 'crypto';
+import { logger } from '@/utils/logger';
+import { ExternalServiceError } from '@/utils/errors';
+import { ai } from '@/services/genkit.service';
+import { config } from '@/config/index';
 import axios from 'axios';
 
 interface ImageGenerationParams {
@@ -58,7 +58,7 @@ export class VertexAIService {
 
       const predictions = response.data.predictions;
 
-      const id = uuidv4();
+      const id = randomUUID();
       return {
         id,
         images: predictions,
@@ -117,7 +117,7 @@ export class VertexAIService {
             : undefined;
       const videoBase64 = buf ? buf.toString('base64') : '';
 
-      const id = uuidv4();
+      const id = randomUUID();
       return {
         id,
         videoUrl: `data:video/mp4;base64,${videoBase64}`,
@@ -166,7 +166,7 @@ export class VertexAIService {
             : undefined;
       const videoBase64 = buf ? buf.toString('base64') : '';
 
-      const id = uuidv4();
+      const id = randomUUID();
       return {
         id,
         videoUrl: `data:video/mp4;base64,${videoBase64}`,

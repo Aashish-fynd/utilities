@@ -1,11 +1,11 @@
 import { Response } from 'express';
 import { z } from 'zod';
-import { vertexAIService } from '@/services/vertexAI.service.js';
-import { asyncHandler } from '@/middleware/errorHandler.js';
-import { AuthRequest } from '@/middleware/auth.js';
-import { logger } from '@/utils/logger.js';
-import { MODELS } from '@/constants';
-import { uploadToCloudinary } from '@/services/cloudinary.service.js';
+import { vertexAIService } from '@/services/vertexAI.service';
+import { asyncHandler } from '@/middleware/errorHandler';
+import { AuthRequest } from '@/middleware/auth';
+import { logger } from '@/utils/logger';
+import { MODELS } from '@/constants/index';
+import { uploadToCloudinary } from '@/services/cloudinary.service';
 
 // Validation schemas
 const text2ImageSchema = z.object({
@@ -16,7 +16,6 @@ const text2ImageSchema = z.object({
   height: z.number().int().min(256).max(2048).optional(),
   model: z.enum(Object.values(MODELS.TEXT_TO_IMAGE)),
   uploadToCloudinary: z.boolean().optional(),
-  cloudinaryFolder: z.string().optional(),
 });
 
 const image2VideoSchema = z.object({
@@ -28,7 +27,6 @@ const image2VideoSchema = z.object({
   height: z.number().int().min(256).max(1080).optional(),
   model: z.enum(Object.values(MODELS.TEXT_TO_VIDEO)),
   uploadToCloudinary: z.boolean().optional(),
-  cloudinaryFolder: z.string().optional(),
 });
 
 const text2VideoSchema = z.object({
@@ -39,7 +37,6 @@ const text2VideoSchema = z.object({
   height: z.number().int().min(256).max(1080).optional(),
   model: z.enum(Object.values(MODELS.TEXT_TO_VIDEO)),
   uploadToCloudinary: z.boolean().optional(),
-  cloudinaryFolder: z.string().optional(),
 });
 
 /**

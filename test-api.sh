@@ -36,83 +36,11 @@ curl -s "$BASE_URL/health"
 echo -e "\n\n3. Testing docs JSON:"
 curl -s "$BASE_URL/api/docs.json" | jq '.info.title, .openapi' 2>/dev/null || echo "(jq not installed)"
 
-# Test Vertex AI health
-echo -e "\n\n4. Testing Vertex AI health:"
-curl -s "$BASE_URL/api/v1/vertex-ai/health" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
-
-# Test Genkit health
-echo -e "\n\n5. Testing Genkit health:"
-curl -s "$BASE_URL/api/v1/genkit/health" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
-
-# Test Media health
-echo -e "\n\n6. Testing Media health:"
-curl -s "$BASE_URL/api/v1/media/health" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
-
-# Test text-to-image
-echo -e "\n\n7. Testing text-to-image endpoint:"
-curl -s -X POST "$BASE_URL/api/v1/vertex-ai/text2image" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -d '{
-    "prompt": "A beautiful sunset over mountains",
-    "numImages": 1,
-    "width": 1024,
-    "height": 1024
-  }'
-
-# Test completion (non-streaming)
-echo -e "\n\n8. Testing completion endpoint (non-streaming):"
-curl -s -X POST "$BASE_URL/api/v1/genkit/completions" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -d '{
-    "prompt": "Hello, how are you?",
-    "maxTokens": 100,
-    "stream": false
-  }'
-
-# Test streaming completion
-echo -e "\n\n9. Testing streaming completion endpoint:"
-echo "Sending request to streaming endpoint..."
-curl -N -X POST "$BASE_URL/api/v1/genkit/completions" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -d '{
-    "prompt": "Write a haiku about coding",
-    "stream": true
-  }'
-
-# Test speech-to-text
-echo -e "\n\n10. Testing speech-to-text (expected to depend on model support):"
-curl -s -X POST "$BASE_URL/api/v1/media/speech-to-text" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -d '{
-    "audio": "UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAA==",
-    "encoding": "LINEAR16",
-    "sampleRateHertz": 16000,
-    "languageCode": "en-US"
-  }'
-
-# Test text-to-speech
-echo -e "\n\n11. Testing text-to-speech:"
-curl -s -X POST "$BASE_URL/api/v1/media/text-to-speech" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -d '{
-    "text": "Hello from the API",
-    "voice": { "languageCode": "en-US" },
-    "audioConfig": { "audioEncoding": "MP3" }
-  }'
-
 # --- Auth flows ---
 # 1) Request token
 REQ=$(call_api POST "/api/v1/auth/request" '{"email":"user@example.com","apis":["genkit","media"]}')
 echo "$REQ"
-REQ_ID=$(echo "$REQ" | jq -r '.data.request.id // empty')
+REQ_ID=$(echo "$REQ" | jq -r '.data.request._id // .data.request.id // empty')
 
 # 2) List pending requests (admin)
 call_api GET "/api/v1/auth/requests?status=pending" | jq '.'
@@ -121,8 +49,18 @@ call_api GET "/api/v1/auth/requests?status=pending" | jq '.'
 if [ -n "$REQ_ID" ]; then
   APPROVE=$(call_api POST "/api/v1/auth/approve" "{\"requestId\":\"$REQ_ID\"}")
   echo "$APPROVE" | jq '.'
-  TOKEN_VALUE=$(echo "$APPROVE" | jq -r '.data.token.token // empty')
-  echo "Issued token: $TOKEN_VALUE"
+  ACCESS_TOKEN=$(echo "$APPROVE" | jq -r '.data.accessToken // empty')
+  REFRESH_TOKEN=$(echo "$APPROVE" | jq -r '.data.refreshToken // empty')
+  echo "Issued access token: ${ACCESS_TOKEN:0:32}..."
+  echo "Issued refresh token: ${REFRESH_TOKEN:0:16}..."
 fi
+
+# Token details
+echo -e "\n\n4. Token details:"
+call_api GET "/api/v1/auth/token" | jq '.'
+
+# Usage logs (current user)
+echo -e "\n\n5. Usage logs:"
+call_api GET "/api/v1/auth/usage?limit=5" | jq '.'
 
 echo -e "\n\nTests completed!"

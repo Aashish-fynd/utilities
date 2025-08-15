@@ -1,8 +1,8 @@
 import { genkit, z } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
-import { config } from '@/config/index.js';
-import { logger } from '@/utils/logger.js';
-import { ExternalServiceError } from '@/utils/errors.js';
+import { config } from '@/config/index';
+import { logger } from '@/utils/logger';
+import { ExternalServiceError } from '@/utils/errors';
 import googleAI from '@genkit-ai/googleai';
 
 // Initialize Genkit

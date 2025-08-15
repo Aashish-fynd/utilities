@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { config } from '@/config/index.js';
-import { AuthenticationError, AuthorizationError } from '@/utils/errors.js';
-
-import { authService } from '@/services/auth.service.js';
+import { config } from '@/config/index';
+import { AuthenticationError, AuthorizationError } from '@/utils/errors';
+import jwt from 'jsonwebtoken';
+import { Token } from '@/models/Token';
+import { User } from '@/models/User';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -11,14 +12,15 @@ export interface AuthRequest extends Request {
     token: string;
     scopes?: string[];
     isAdmin?: boolean;
+    tokenId?: string;
   };
 }
 
-export const authenticate = (req: AuthRequest, _res: Response, next: NextFunction): void => {
+export const authenticate = async (req: AuthRequest, _res: Response, next: NextFunction): Promise<void> => {
   try {
     // Support local dev without token
     if (config.NODE_ENV === 'development' && !config.ACCESS_TOKEN) {
-      req.user = { id: 'dev-user', token: 'dev-token', scopes: ['*'], isAdmin: true };
+      req.user = { id: '000000000000000000000000', token: 'dev-token', scopes: ['*'], isAdmin: true };
       return next();
     }
 
@@ -31,48 +33,55 @@ export const authenticate = (req: AuthRequest, _res: Response, next: NextFunctio
       throw new AuthenticationError('Missing access token');
     }
 
-    // First check DB-backed tokens
-    const dbToken = authService.findTokenByValue(token);
-    if (dbToken) {
+    try {
+      const decoded = jwt.verify(token, config.JWT_ACCESS_SECRET) as { sub: string; jti: string; scopes: string[] };
+      const tokenDoc = await Token.findOne({ jti: decoded.jti, active: true });
+      if (!tokenDoc) throw new AuthenticationError('Invalid access token');
+      const user = await User.findById(tokenDoc.userId);
+      if (!user) throw new AuthenticationError('Invalid access token');
+
       req.user = {
-        id: dbToken.user_id,
-        email: dbToken.email,
+        id: (user._id as any).toString(),
+        email: user.email,
         token,
-        scopes: dbToken.apis.split(',').map((s) => s.trim()),
-        isAdmin: false,
+        scopes: tokenDoc.scopes,
+        isAdmin: !!user.isAdmin,
+        tokenId: (tokenDoc._id as any).toString(),
       };
       return next();
+    } catch {
+      throw new AuthenticationError('Invalid access token');
     }
-
-    throw new AuthenticationError('Invalid access token');
   } catch (error) {
     next(error);
   }
 };
 
-export const optionalAuth = (req: AuthRequest, _res: Response, next: NextFunction): void => {
+export const optionalAuth = async (req: AuthRequest, _res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.startsWith('Bearer ')
     ? authHeader.substring('Bearer '.length).trim()
     : undefined;
 
   if (token) {
-    const dbToken = authService.findTokenByValue(token);
-    if (dbToken) {
-      req.user = {
-        id: dbToken.user_id,
-        email: dbToken.email,
-        token,
-        scopes: dbToken.apis.split(',').map((s) => s.trim()),
-        isAdmin: false,
-      };
-    } else if (config.ACCESS_TOKEN && token === config.ACCESS_TOKEN) {
-      req.user = {
-        id: 'static-token-user',
-        token,
-        scopes: ['*'],
-        isAdmin: true,
-      };
+    try {
+      const decoded = jwt.verify(token, config.JWT_ACCESS_SECRET) as { sub: string; jti: string; scopes: string[] };
+      const tokenDoc = await Token.findOne({ jti: decoded.jti, active: true });
+      if (tokenDoc) {
+        const user = await User.findById(tokenDoc.userId);
+        if (user) {
+          req.user = {
+            id: (user._id as any).toString(),
+            email: user.email,
+            token,
+            scopes: tokenDoc.scopes,
+            isAdmin: !!user.isAdmin,
+            tokenId: (tokenDoc._id as any).toString(),
+          };
+        }
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -90,7 +99,7 @@ export const requireScope = (requiredScope: string) => {
 };
 
 export const requireAdmin = (req: AuthRequest, _res: Response, next: NextFunction): void => {
-  // Admins are either static ACCESS_TOKEN users or have X-Admin-Key header
+  // Admins are users with isAdmin flag or have X-Admin-Key header
   const adminHeader = req.headers['x-admin-key'];
   const hasAdminHeader =
     typeof adminHeader === 'string' &&

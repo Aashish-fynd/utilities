@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { authenticate, requireScope } from '@/middleware/auth.js';
-import * as genkitController from '@/controllers/genkit.controller.js';
+import { authenticate, requireScope } from '@/middleware/auth';
+import { usageLogger } from '@/middleware/usage';
+import * as genkitController from '@/controllers/genkit.controller';
 
 /**
  * @openapi
@@ -13,6 +14,9 @@ const router: Router = Router();
 // All Genkit routes require authentication
 router.use(authenticate);
 router.use(requireScope('genkit'));
+
+// Log usage for all endpoints under this router
+router.use(usageLogger());
 
 // Completion endpoints
 router.post('/completions', genkitController.createCompletion);

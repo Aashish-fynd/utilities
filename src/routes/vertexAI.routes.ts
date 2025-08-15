@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { authenticate, requireScope } from '@/middleware/auth.js';
-import * as vertexAIController from '@/controllers/vertexAI.controller.js';
+import { authenticate, requireScope } from '@/middleware/auth';
+import { usageLogger } from '@/middleware/usage';
+import * as vertexAIController from '@/controllers/vertexAI.controller';
 
 /**
  * @openapi
@@ -13,6 +14,9 @@ const router: Router = Router();
 // All Vertex AI routes require authentication
 router.use(authenticate);
 router.use(requireScope('vertex-ai'));
+
+// Log usage for all endpoints under this router
+router.use(usageLogger());
 
 // Image generation
 /**

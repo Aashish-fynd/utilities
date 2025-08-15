@@ -1,21 +1,48 @@
-import swaggerJSDoc from 'swagger-jsdoc';
-import { config } from '@/config/index.js';
+import swaggerJsdoc from 'swagger-jsdoc';
+import { config } from '@/config/index';
 
-const swaggerDefinition = {
-  openapi: '3.0.0',
-  info: {
-    title: 'Vertex AI Utilities API',
-    version: '1.1.0',
-    description:
-      'A comprehensive API for Google Vertex AI utilities including image/video generation, Genkit completions, audio transcription/synthesis, and token-based authentication.',
-    contact: {
-      name: 'API Support',
-      email: 'support@example.com',
+const options = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Vertex AI Utilities API',
+      version: '1.1.0',
+      description: 'API documentation for Vertex AI Utilities',
     },
-    license: {
-      name: 'MIT',
-      url: 'https://opensource.org/licenses/MIT',
+    servers: [
+      {
+        url: config.SWAGGER_SERVER_URL || 'http://localhost:3000',
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+      schemas: {
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', example: 'error' },
+            message: { type: 'string', example: 'Validation failed' },
+            details: { type: 'array', items: { type: 'object' }, nullable: true },
+          },
+        },
+        TokenApprovalResponse: {
+          type: 'object',
+          properties: {
+            accessToken: { type: 'string' },
+            refreshToken: { type: 'string' },
+            token: { type: 'object' },
+            request: { type: 'object' },
+          },
+        },
+      },
     },
+    security: [{ bearerAuth: [] }],
   },
   servers: [
     {
@@ -224,7 +251,4 @@ const swaggerDefinition = {
   ],
 };
 
-export const swaggerSpec = swaggerJSDoc({
-  definition: swaggerDefinition,
-  apis: ['src/routes/*.ts', 'src/controllers/*.ts'],
-});
+export const swaggerSpec = swaggerJsdoc(options);

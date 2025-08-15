@@ -4,17 +4,18 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import { config, isProduction } from '@/config/index.js';
-import { logger } from '@/utils/logger.js';
-import { errorHandler, notFoundHandler } from '@/middleware/errorHandler.js';
-import routes from '@/routes/index.js';
+import { config, isProduction } from '@/config/index';
+import { logger } from '@/utils/logger';
+import { errorHandler, notFoundHandler } from '@/middleware/errorHandler';
+import routes from '@/routes/index';
 import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from '@/utils/swagger.js';
+import { swaggerSpec } from '@/utils/swagger';
+import { connectDb } from '@/db/mongoose';
 
 // Create Express app
 const app: Express = express();
 
-// Trust proxy for Cloudflare
+// Trust proxy if behind proxy
 app.set('trust proxy', true);
 
 // Security middleware
@@ -90,91 +91,13 @@ app.use(notFoundHandler);
 // Error handler (must be last)
 app.use(errorHandler);
 
-// For Cloudflare Workers compatibility
-let server: any;
-
-if (process.env.NODE_ENV !== 'production' || !process.env.CLOUDFLARE_WORKER) {
-  // Traditional Node.js server
+// Start Node server
+(async () => {
+  await connectDb();
   const PORT = config.PORT;
-  server = app.listen(PORT, () => {
-    logger.info(`Server is running on port ${PORT}`);
-    logger.info(`Environment: ${config.NODE_ENV}`);
+  app.listen(PORT, () => {
+    logger.info(`Server listening on port ${PORT}`);
   });
+})();
 
-  // Graceful shutdown
-  const gracefulShutdown = () => {
-    logger.info('Received shutdown signal, closing server...');
-    server.close(() => {
-      logger.info('Server closed');
-      process.exit(0);
-    });
-
-    // Force close after 30 seconds
-    setTimeout(() => {
-      logger.error('Could not close connections in time, forcefully shutting down');
-      process.exit(1);
-    }, 30000);
-  };
-
-  process.on('SIGTERM', gracefulShutdown);
-  process.on('SIGINT', gracefulShutdown);
-}
-
-// Export for Cloudflare Workers
 export default app;
-
-// Export handler for Cloudflare Workers
-export const handleRequest = async (request: Request): Promise<Response> => {
-  // Convert Cloudflare Request to Node.js-like request
-  const url = new URL(request.url);
-  const headers: Record<string, string> = {};
-  request.headers.forEach((value, key) => {
-    headers[key] = value;
-  });
-
-  // Create a mock request/response for Express
-  const mockReq: any = {
-    method: request.method,
-    url: url.pathname + url.search,
-    headers,
-    body: request.method !== 'GET' ? await request.json() : undefined,
-  };
-
-  const mockRes: any = {
-    statusCode: 200,
-    headers: {},
-    body: '',
-    setHeader(key: string, value: string) {
-      this.headers[key] = value;
-    },
-    status(code: number) {
-      this.statusCode = code;
-      return this;
-    },
-    json(data: any) {
-      this.headers['Content-Type'] = 'application/json';
-      this.body = JSON.stringify(data);
-    },
-    send(data: any) {
-      this.body = data;
-    },
-    write(chunk: any) {
-      this.body += chunk;
-    },
-    end() {
-      // No-op for compatibility
-    },
-  };
-
-  // Process request through Express
-  return new Promise((resolve) => {
-    app(mockReq, mockRes, () => {
-      resolve(
-        new Response(mockRes.body, {
-          status: mockRes.statusCode,
-          headers: mockRes.headers,
-        })
-      );
-    });
-  });
-};

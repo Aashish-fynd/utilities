@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authenticate, requireScope } from '@/middleware/auth.js';
-import * as mediaController from '@/controllers/media.controller.js';
+import { authenticate, requireScope } from '@/middleware/auth';
+import * as mediaController from '@/controllers/media.controller';
 
 /**
  * @openapi
