@@ -53,6 +53,8 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().optional(),
   CLOUDINARY_UPLOAD_PRESET: z.string().optional(),
   CLOUDINARY_FOLDER: z.string().default('generated'),
+
+  GEMINI_API_KEY: z.string(),
 });
 
 const parseEnv = () => {
