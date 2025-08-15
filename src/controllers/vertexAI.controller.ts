@@ -4,7 +4,7 @@ import { vertexAIService } from '@/services/vertexAI.service.js';
 import { asyncHandler } from '@/middleware/errorHandler.js';
 import { AuthRequest } from '@/middleware/auth.js';
 import { logger } from '@/utils/logger.js';
-import { MODELS } from '@/constants';
+import { MODELS } from '@/constants/index.js';
 
 // Validation schemas
 const text2ImageSchema = z.object({
@@ -13,7 +13,7 @@ const text2ImageSchema = z.object({
   numImages: z.number().int().min(1).max(4).optional(),
   width: z.number().int().min(256).max(2048).optional(),
   height: z.number().int().min(256).max(2048).optional(),
-  model: z.enum(Object.values(MODELS.TEXT_TO_IMAGE)),
+  model: z.enum(Object.values(MODELS.TEXT_TO_IMAGE) as [string, ...string[]]),
 });
 
 const image2VideoSchema = z.object({
@@ -23,7 +23,7 @@ const image2VideoSchema = z.object({
   fps: z.number().int().min(12).max(60).optional(),
   width: z.number().int().min(256).max(1920).optional(),
   height: z.number().int().min(256).max(1080).optional(),
-  model: z.enum(Object.values(MODELS.TEXT_TO_VIDEO)),
+  model: z.enum(Object.values(MODELS.TEXT_TO_VIDEO) as [string, ...string[]]),
 });
 
 const text2VideoSchema = z.object({
@@ -32,7 +32,7 @@ const text2VideoSchema = z.object({
   fps: z.number().int().min(12).max(60).optional(),
   width: z.number().int().min(256).max(1920).optional(),
   height: z.number().int().min(256).max(1080).optional(),
-  model: z.enum(Object.values(MODELS.TEXT_TO_VIDEO)),
+  model: z.enum(Object.values(MODELS.TEXT_TO_VIDEO) as [string, ...string[]]),
 });
 
 /**

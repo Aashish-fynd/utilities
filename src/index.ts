@@ -10,6 +10,8 @@ import { errorHandler, notFoundHandler } from '@/middleware/errorHandler.js';
 import routes from '@/routes/index.js';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from '@/utils/swagger.js';
+import { connectDb } from '@/db/mongoose.js';
+import { UsageLog } from '@/models/UsageLog.js';
 
 // Create Express app
 const app: Express = express();
@@ -81,6 +83,33 @@ app.use((req, _res, next) => {
   next();
 });
 
+// Usage logging after response
+app.use((req: any, res, next) => {
+  const start = Date.now();
+  const originalEnd: any = res.end;
+  res.end = function (this: any, chunk?: any, encoding?: any) {
+    try {
+      const durationMs = Date.now() - start;
+      const statusCode = res.statusCode || 200;
+      const user = (req as any).user;
+      UsageLog.create({
+        userId: user?.id ? user.id : undefined,
+        tokenId: user?.tokenId ? user.tokenId : undefined,
+        route: req.path,
+        method: req.method,
+        statusCode,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+        durationMs,
+      }).catch(() => {});
+    } catch {
+      // ignore logging errors
+    }
+    return originalEnd.apply(this, [chunk, encoding]);
+  } as any;
+  next();
+});
+
 // Mount routes
 app.use(routes);
 
@@ -93,32 +122,41 @@ app.use(errorHandler);
 // For Cloudflare Workers compatibility
 let server: any;
 
-if (process.env.NODE_ENV !== 'production' || !process.env.CLOUDFLARE_WORKER) {
-  // Traditional Node.js server
-  const PORT = config.PORT;
-  server = app.listen(PORT, () => {
-    logger.info(`Server is running on port ${PORT}`);
-    logger.info(`Environment: ${config.NODE_ENV}`);
-  });
+async function start() {
+  await connectDb();
 
-  // Graceful shutdown
-  const gracefulShutdown = () => {
-    logger.info('Received shutdown signal, closing server...');
-    server.close(() => {
-      logger.info('Server closed');
-      process.exit(0);
+  if (process.env.NODE_ENV !== 'production' || !process.env.CLOUDFLARE_WORKER) {
+    // Traditional Node.js server
+    const PORT = config.PORT;
+    server = app.listen(PORT, () => {
+      logger.info(`Server is running on port ${PORT}`);
+      logger.info(`Environment: ${config.NODE_ENV}`);
     });
 
-    // Force close after 30 seconds
-    setTimeout(() => {
-      logger.error('Could not close connections in time, forcefully shutting down');
-      process.exit(1);
-    }, 30000);
-  };
+    // Graceful shutdown
+    const gracefulShutdown = () => {
+      logger.info('Received shutdown signal, closing server...');
+      server.close(() => {
+        logger.info('Server closed');
+        process.exit(0);
+      });
 
-  process.on('SIGTERM', gracefulShutdown);
-  process.on('SIGINT', gracefulShutdown);
+      // Force close after 30 seconds
+      setTimeout(() => {
+        logger.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+      }, 30000);
+    };
+
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+  }
 }
+
+start().catch((err) => {
+  logger.error('Failed to start server', err);
+  process.exit(1);
+});
 
 // Export for Cloudflare Workers
 export default app;
@@ -168,7 +206,7 @@ export const handleRequest = async (request: Request): Promise<Response> => {
 
   // Process request through Express
   return new Promise((resolve) => {
-    app(mockReq, mockRes, () => {
+    (app as any)(mockReq, mockRes, () => {
       resolve(
         new Response(mockRes.body, {
           status: mockRes.statusCode,

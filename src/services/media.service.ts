@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { logger } from '@/utils/logger.js';
 import { ExternalServiceError } from '@/utils/errors.js';
 import { ai } from '@/services/genkit.service.js';
@@ -77,7 +77,7 @@ export class MediaService {
         ? [{ text: bestText }]
         : [];
 
-      const id = uuidv4();
+      const id = randomUUID();
       return {
         id,
         text: bestText,
@@ -137,7 +137,7 @@ export class MediaService {
 
       const audioContent = audioBuffer ? audioBuffer.toString('base64') : '';
 
-      const id = uuidv4();
+      const id = randomUUID();
       return {
         id,
         audioContent,

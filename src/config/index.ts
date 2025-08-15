@@ -30,12 +30,19 @@ const envSchema = z.object({
   PORT: z.string().default('3000').transform(Number),
   NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
 
-  // Auth
+  // Auth (legacy static token support)
   ACCESS_TOKEN: z.string().optional(),
   API_KEY: z.string().optional(),
 
-  // Database
-  SQLITE_DB_PATH: z.string().optional(),
+  // Database (MongoDB)
+  MONGODB_URI: z.string().default('mongodb://localhost:27017/vertex_ai_utilities'),
+
+  // JWT & Token Lifetimes
+  JWT_ACCESS_SECRET: z.string().default('dev-access-secret-change-me'),
+  JWT_REFRESH_SECRET: z.string().default('dev-refresh-secret-change-me'),
+  ACCESS_TOKEN_TTL_MINUTES: z.string().default('15').transform(Number),
+  REFRESH_TOKEN_TTL_DAYS: z.string().default('90').transform(Number), // default 3 months
+  REFRESH_TOKEN_MAX_DAYS: z.string().default('90').transform(Number), // max 3 months
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: z.string().default('900000').transform(Number),

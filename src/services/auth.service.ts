@@ -1,184 +1,204 @@
-import { getDb } from '@/db/sqlite.js';
-import { randomUUID } from 'crypto';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { Types } from 'mongoose';
+import { config } from '@/config/index.js';
+import { User, IUser } from '@/models/User.js';
+import { Token, IToken } from '@/models/Token.js';
+import { RefreshToken, IRefreshToken } from '@/models/RefreshToken.js';
+import { TokenRequest, ITokenRequest, TokenRequestStatus } from '@/models/TokenRequest.js';
+import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '@/utils/errors.js';
 
-export interface User {
-  id: string;
-  email: string;
-  is_admin: number;
-  created_at: string;
+export interface JwtPayload {
+  sub: string; // user id
+  jti: string; // token id
+  scopes: string[];
 }
 
-export interface Token {
-  id: string;
-  user_id: string;
-  token: string;
-  apis: string; // comma-separated list
-  active: number;
-  created_at: string;
-  revoked_at?: string | null;
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
-export type TokenRequestStatus = 'pending' | 'approved' | 'rejected';
-
-export interface TokenRequest {
-  id: string;
-  user_id: string;
-  requested_apis: string; // comma-separated list
-  status: TokenRequestStatus;
-  admin_note?: string | null;
-  token_id?: string | null;
-  created_at: string;
-  updated_at: string;
+function ensureScopes(apis: string[]): string[] {
+  const scopes = apis.map((s) => s.trim()).filter(Boolean);
+  if (scopes.length === 0) throw new ValidationError('At least one API scope is required');
+  return Array.from(new Set(scopes));
 }
 
 export const authService = {
-  findOrCreateUserByEmail(email: string): User {
-    const db = getDb();
-    const find = db.prepare<[string], User>('SELECT * FROM users WHERE email = ?');
-    const user = find.get(email);
-    if (user) return user as User;
-    const newUser: User = {
-      id: randomUUID(),
-      email,
-      is_admin: 0,
-      created_at: new Date().toISOString(),
-    };
-    db.prepare(
-      'INSERT INTO users (id, email, is_admin, created_at) VALUES (@id, @email, @is_admin, @created_at)'
-    ).run(newUser);
-    return newUser;
+  async findOrCreateUserByEmail(email: string): Promise<IUser> {
+    let user = await User.findOne({ email });
+    if (user) return user as unknown as IUser;
+    user = await User.create({ email, isAdmin: false });
+    return user as unknown as IUser;
   },
 
-  createTokenRequest(userId: string, apis: string[]): TokenRequest {
-    const db = getDb();
-    const now = new Date().toISOString();
-    const req: TokenRequest = {
-      id: randomUUID(),
-      user_id: userId,
-      requested_apis: apis.join(','),
+  async createTokenRequest(userId: string, apis: string[]): Promise<ITokenRequest> {
+    const scopes = ensureScopes(apis);
+    const request = await TokenRequest.create({
+      userId: new Types.ObjectId(userId),
+      requestedApis: scopes,
       status: 'pending',
-      admin_note: null,
-      token_id: null,
-      created_at: now,
-      updated_at: now,
-    };
-    db.prepare(
-      'INSERT INTO token_requests (id, user_id, requested_apis, status, admin_note, token_id, created_at, updated_at) VALUES (@id, @user_id, @requested_apis, @status, @admin_note, @token_id, @created_at, @updated_at)'
-    ).run(req);
-    return req;
-  },
-
-  listTokenRequests(status?: TokenRequestStatus): TokenRequest[] {
-    const db = getDb();
-    if (status) {
-      return db
-        .prepare<
-          [TokenRequestStatus],
-          TokenRequest
-        >('SELECT * FROM token_requests WHERE status = ? ORDER BY created_at DESC')
-        .all(status) as unknown as TokenRequest[];
-    }
-    return db
-      .prepare<[], TokenRequest>('SELECT * FROM token_requests ORDER BY created_at DESC')
-      .all() as unknown as TokenRequest[];
-  },
-
-  approveTokenRequest(
-    requestId: string,
-    adminNote?: string
-  ): { request: TokenRequest; token: Token } {
-    const db = getDb();
-    const tx = db.transaction(() => {
-      const req = db
-        .prepare<[string], TokenRequest>('SELECT * FROM token_requests WHERE id = ?')
-        .get(requestId) as TokenRequest | undefined;
-      if (!req) throw new Error('Request not found');
-      if (req.status !== 'pending') throw new Error('Request not pending');
-
-      // If a token already exists for this user, update its scopes; otherwise create a new token
-      const existing = db
-        .prepare<
-          [string],
-          Token
-        >('SELECT * FROM tokens WHERE user_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 1')
-        .get(req.user_id) as Token | undefined;
-
-      let token: Token;
-      if (existing) {
-        db.prepare('UPDATE tokens SET apis = ?, revoked_at = NULL, active = 1 WHERE id = ?').run(
-          req.requested_apis,
-          existing.id
-        );
-        token = db
-          .prepare<[string], Token>('SELECT * FROM tokens WHERE id = ?')
-          .get(existing.id) as Token;
-      } else {
-        token = {
-          id: randomUUID(),
-          user_id: req.user_id,
-          token: randomUUID().replace(/-/g, ''),
-          apis: req.requested_apis,
-          active: 1,
-          created_at: new Date().toISOString(),
-          revoked_at: null,
-        };
-        db.prepare(
-          'INSERT INTO tokens (id, user_id, token, apis, active, created_at, revoked_at) VALUES (@id, @user_id, @token, @apis, @active, @created_at, @revoked_at)'
-        ).run(token);
-      }
-
-      db.prepare(
-        'UPDATE token_requests SET status = ?, admin_note = ?, token_id = ?, updated_at = ? WHERE id = ?'
-      ).run('approved', adminNote || null, token.id, new Date().toISOString(), requestId);
-      const updatedReq = db
-        .prepare<[string], TokenRequest>('SELECT * FROM token_requests WHERE id = ?')
-        .get(requestId) as TokenRequest;
-      return { request: updatedReq, token };
     });
-    return tx();
+    return request as unknown as ITokenRequest;
   },
 
-  rejectTokenRequest(requestId: string, adminNote?: string): TokenRequest {
-    const db = getDb();
-    const now = new Date().toISOString();
-    db.prepare(
-      'UPDATE token_requests SET status = ?, admin_note = ?, updated_at = ? WHERE id = ?'
-    ).run('rejected', adminNote || null, now, requestId);
-    const updated = db
-      .prepare<[string], TokenRequest>('SELECT * FROM token_requests WHERE id = ?')
-      .get(requestId) as TokenRequest | undefined;
-    if (!updated) throw new Error('Request not found');
-    return updated;
+  async listTokenRequests(status?: TokenRequestStatus): Promise<ITokenRequest[]> {
+    const q = status ? { status } : {};
+    return (await TokenRequest.find(q).sort({ createdAt: -1 }).lean()) as unknown as ITokenRequest[];
   },
 
-  findTokenByValue(tokenValue: string): (Token & { email: string }) | undefined {
-    const db = getDb();
-    return db
-      .prepare<
-        [string],
-        Token & { email: string }
-      >(`SELECT t.*, u.email FROM tokens t JOIN users u ON u.id = t.user_id WHERE t.token = ? AND t.active = 1`)
-      .get(tokenValue) as (Token & { email: string }) | undefined;
-  },
+  async approveTokenRequest(requestId: string, adminNote?: string): Promise<{ request: ITokenRequest; token: IToken; accessToken: string; refreshToken: string; }>{
+    const req = await TokenRequest.findById(requestId);
+    if (!req) throw new NotFoundError('Request not found');
+    if (req.status !== 'pending') throw new ValidationError('Request not pending');
 
-  updateTokenScopes(tokenId: string, apis: string[]): Token {
-    const db = getDb();
-    db.prepare('UPDATE tokens SET apis = ?, revoked_at = NULL, active = 1 WHERE id = ?').run(
-      apis.join(','),
-      tokenId
+    const now = new Date();
+
+    // Either update existing active token scopes or create a new token record (jti)
+    let tokenDoc = await Token.findOne({ userId: req.userId, active: true }).sort({ createdAt: -1 });
+    const scopes = ensureScopes(req.requestedApis);
+
+    if (tokenDoc) {
+      tokenDoc.scopes = scopes;
+      tokenDoc.revokedAt = null;
+      tokenDoc.active = true;
+      tokenDoc.expiresAt = addDays(now, Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS));
+      await tokenDoc.save();
+    } else {
+      const jti = new Types.ObjectId().toString();
+      tokenDoc = await Token.create({
+        jti,
+        userId: req.userId,
+        scopes,
+        active: true,
+        createdAt: now,
+        expiresAt: addDays(now, Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)),
+      });
+    }
+
+    // Issue new access and refresh tokens
+    const accessToken = jwt.sign(
+      { sub: (tokenDoc.userId as any).toString(), jti: tokenDoc.jti, scopes: tokenDoc.scopes },
+      config.JWT_ACCESS_SECRET,
+      { expiresIn: `${config.ACCESS_TOKEN_TTL_MINUTES}m` }
     );
-    const token = db.prepare<[string], Token>('SELECT * FROM tokens WHERE id = ?').get(tokenId) as
-      | Token
-      | undefined;
-    if (!token) throw new Error('Token not found');
-    return token;
+
+    // Clear older refresh tokens for this tokenId
+    await RefreshToken.updateMany({ tokenId: tokenDoc._id, revokedAt: null }, { $set: { revokedAt: now } });
+
+    const refreshPlain = new Types.ObjectId().toString() + '.' + new Types.ObjectId().toString();
+    const refreshHash = await bcrypt.hash(refreshPlain, 10);
+    await RefreshToken.create({
+      userId: tokenDoc.userId,
+      tokenId: tokenDoc._id,
+      hash: refreshHash,
+      createdAt: now,
+      expiresAt: addDays(now, Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)),
+    });
+
+    req.status = 'approved';
+    req.adminNote = adminNote || null;
+    req.tokenId = tokenDoc._id as any;
+    req.updatedAt = new Date();
+    await req.save();
+
+    return { request: req as unknown as ITokenRequest, token: tokenDoc as unknown as IToken, accessToken, refreshToken: refreshPlain };
   },
 
-  revokeToken(tokenId: string): void {
-    const db = getDb();
-    db.prepare('UPDATE tokens SET active = 0, revoked_at = ? WHERE id = ?').run(
-      new Date().toISOString(),
-      tokenId
+  async rejectTokenRequest(requestId: string, adminNote?: string): Promise<ITokenRequest> {
+    const req = await TokenRequest.findById(requestId);
+    if (!req) throw new NotFoundError('Request not found');
+    req.status = 'rejected';
+    req.adminNote = adminNote || null;
+    req.updatedAt = new Date();
+    await req.save();
+    return req as unknown as ITokenRequest;
+  },
+
+  async rotateRefreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string; }>{
+    const now = new Date();
+    // We do not store refresh token in plaintext; locate by scanning non-revoked and validate hash
+    const candidates = await RefreshToken.find({ revokedAt: null, expiresAt: { $gt: now } }).limit(1000);
+    let matched: IRefreshToken | null = null;
+    for (const doc of candidates) {
+      const ok = await bcrypt.compare(refreshToken, doc.hash);
+      if (ok) {
+        matched = doc;
+        break;
+      }
+    }
+    if (!matched) throw new AuthenticationError('Invalid refresh token');
+
+    // Revoke old refresh token
+    matched.revokedAt = now;
+    await matched.save();
+
+    // Load token/jti record
+    const tokenDoc = await Token.findById(matched.tokenId);
+    if (!tokenDoc || !tokenDoc.active || tokenDoc.expiresAt <= now) {
+      throw new AuthorizationError('Token expired or inactive');
+    }
+
+    // Issue new access token
+    const accessToken = jwt.sign(
+      { sub: (tokenDoc.userId as any).toString(), jti: tokenDoc.jti, scopes: tokenDoc.scopes },
+      config.JWT_ACCESS_SECRET,
+      { expiresIn: `${config.ACCESS_TOKEN_TTL_MINUTES}m` }
     );
+
+    // Issue new refresh token (rotate)
+    const refreshPlain = new Types.ObjectId().toString() + '.' + new Types.ObjectId().toString();
+    const refreshHash = await bcrypt.hash(refreshPlain, 10);
+    await RefreshToken.create({
+      userId: tokenDoc.userId,
+      tokenId: tokenDoc._id,
+      hash: refreshHash,
+      createdAt: now,
+      expiresAt: addDays(now, Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)),
+    });
+
+    return { accessToken, refreshToken: refreshPlain };
+  },
+
+  async revokeToken(tokenId: string): Promise<void> {
+    await Token.findByIdAndUpdate(tokenId, { $set: { active: false, revokedAt: new Date() } });
+    await RefreshToken.updateMany({ tokenId: new Types.ObjectId(tokenId), revokedAt: null }, { $set: { revokedAt: new Date() } });
+  },
+
+  async getTokenDetailsByAccessToken(accessToken: string): Promise<{ token: IToken; user: IUser } | null> {
+    try {
+      const decoded = jwt.verify(accessToken, config.JWT_ACCESS_SECRET) as JwtPayload;
+      const token = await Token.findOne({ jti: decoded.jti, active: true });
+      if (!token) return null;
+      const user = await User.findById(token.userId);
+      if (!user) return null;
+      return { token: token as unknown as IToken, user: user as unknown as IUser };
+    } catch {
+      return null;
+    }
+  },
+
+  async findTokenByValue(accessToken: string): Promise<(IToken & { userEmail?: string }) | undefined> {
+    try {
+      const decoded = jwt.verify(accessToken, config.JWT_ACCESS_SECRET) as JwtPayload;
+      const token = await Token.findOne({ jti: decoded.jti, active: true }).populate('userId');
+      if (!token) return undefined;
+      const anyToken: any = token.toObject();
+      anyToken.email = (anyToken.userId && (anyToken.userId as any).email) || undefined;
+      return anyToken as any;
+    } catch {
+      return undefined;
+    }
+  },
+
+  async updateTokenScopes(tokenId: string, apis: string[]): Promise<IToken> {
+    const scopes = ensureScopes(apis);
+    const token = await Token.findByIdAndUpdate(
+      tokenId,
+      { $set: { scopes, revokedAt: null, active: true } },
+      { new: true }
+    );
+    if (!token) throw new NotFoundError('Token not found');
+    return token as unknown as IToken;
   },
 };
