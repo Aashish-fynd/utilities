@@ -8,7 +8,7 @@ import { MODELS } from '@/constants/index';
 import { uploadToCloudinary } from '@/services/cloudinary.service';
 
 // Validation schemas
-const text2ImageSchema = z.object({
+export const text2ImageSchema = z.object({
   prompt: z.string().min(1).max(1000),
   negativePrompt: z.string().max(1000).optional(),
   numImages: z.number().int().min(1).max(4).optional(),
@@ -18,7 +18,7 @@ const text2ImageSchema = z.object({
   uploadToCloudinary: z.boolean().optional(),
 });
 
-const image2VideoSchema = z.object({
+export const image2VideoSchema = z.object({
   image: z.string(), // base64 encoded image
   prompt: z.string().max(1000).optional(),
   duration: z.number().min(1).max(10).optional(),
@@ -29,7 +29,7 @@ const image2VideoSchema = z.object({
   uploadToCloudinary: z.boolean().optional(),
 });
 
-const text2VideoSchema = z.object({
+export const text2VideoSchema = z.object({
   prompt: z.string().min(1).max(1000),
   duration: z.number().min(1).max(10).optional(),
   fps: z.number().int().min(12).max(60).optional(),
@@ -76,17 +76,16 @@ const text2VideoSchema = z.object({
  *         description: A list of generated images
  */
 export const text2Image = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const params = text2ImageSchema.parse(req.body);
+  const requestBody = req.body;
 
   logger.info('Text to image request', {
     userId: req.user?.id,
-    prompt: params.prompt.substring(0, 50) + '...',
+    prompt: requestBody.prompt.substring(0, 50) + '...',
   });
 
-  const result = await vertexAIService.generateImage(params);
+  const result = await vertexAIService.generateImage(requestBody);
 
-  if (params.uploadToCloudinary) {
-    const folder = params.cloudinaryFolder;
+  if (requestBody.uploadToCloudinary) {
     const urls: string[] = [];
 
     for (const item of (result as any).images || []) {
@@ -104,7 +103,7 @@ export const text2Image = asyncHandler(async (req: AuthRequest, res: Response) =
 
       if (!fileForUpload) continue;
 
-      const url = await uploadToCloudinary({ file: fileForUpload, resourceType: 'image', folder });
+      const url = await uploadToCloudinary({ file: fileForUpload, resourceType: 'image' });
       urls.push(url);
     }
 
@@ -211,19 +210,18 @@ export const text2Image = asyncHandler(async (req: AuthRequest, res: Response) =
  *         description: Insufficient permissions
  */
 export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const params = image2VideoSchema.parse(req.body);
+  const requestBody = req.body;
 
   logger.info('Image to video request', {
     userId: req.user?.id,
-    imageSize: params.image.length,
+    imageSize: requestBody.image.length,
   });
 
-  const result = await vertexAIService.generateVideoFromImage(params);
+  const result = await vertexAIService.generateVideoFromImage(requestBody);
 
-  if (params.uploadToCloudinary) {
-    const folder = params.cloudinaryFolder;
+  if (requestBody.uploadToCloudinary) {
     const fileForUpload = (result as any).videoUrl as string; // should be data URL
-    const url = await uploadToCloudinary({ file: fileForUpload, resourceType: 'video', folder });
+    const url = await uploadToCloudinary({ file: fileForUpload, resourceType: 'video' });
     return res.json({ status: 'success', data: { url } });
   }
 
@@ -321,19 +319,18 @@ export const image2Video = asyncHandler(async (req: AuthRequest, res: Response) 
  *         description: Insufficient permissions
  */
 export const text2Video = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const params = text2VideoSchema.parse(req.body);
+  const requestBody = req.body;
 
   logger.info('Text to video request', {
     userId: req.user?.id,
-    prompt: params.prompt.substring(0, 50) + '...',
+    prompt: requestBody.prompt.substring(0, 50) + '...',
   });
 
-  const result = await vertexAIService.generateVideoFromText(params);
+  const result = await vertexAIService.generateVideoFromText(requestBody);
 
-  if (params.uploadToCloudinary) {
-    const folder = params.cloudinaryFolder;
+  if (requestBody.uploadToCloudinary) {
     const fileForUpload = (result as any).videoUrl as string; // should be data URL
-    const url = await uploadToCloudinary({ file: fileForUpload, resourceType: 'video', folder });
+    const url = await uploadToCloudinary({ file: fileForUpload, resourceType: 'video' });
     return res.json({ status: 'success', data: { url } });
   }
 

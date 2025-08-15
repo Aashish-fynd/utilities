@@ -6,7 +6,12 @@ import { User, IUser } from '@/models/User';
 import { Token, IToken } from '@/models/Token';
 import { RefreshToken, IRefreshToken } from '@/models/RefreshToken';
 import { TokenRequest, ITokenRequest, TokenRequestStatus } from '@/models/TokenRequest';
-import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '@/utils/errors';
+import {
+  AuthenticationError,
+  AuthorizationError,
+  NotFoundError,
+  ValidationError,
+} from '@/utils/errors';
 
 export interface JwtPayload {
   sub: string; // user id
@@ -27,9 +32,9 @@ function ensureScopes(apis: string[]): string[] {
 export const authService = {
   async findOrCreateUserByEmail(email: string): Promise<IUser> {
     let user = await User.findOne({ email });
-    if (user) return user as unknown as IUser;
+    if (user) return user;
     user = await User.create({ email, isAdmin: false });
-    return user as unknown as IUser;
+    return user;
   },
 
   async createTokenRequest(userId: string, apis: string[]): Promise<ITokenRequest> {
@@ -39,15 +44,18 @@ export const authService = {
       requestedApis: scopes,
       status: 'pending',
     });
-    return request as unknown as ITokenRequest;
+    return request;
   },
 
   async listTokenRequests(status?: TokenRequestStatus): Promise<ITokenRequest[]> {
     const q = status ? { status } : {};
-    return (await TokenRequest.find(q).sort({ createdAt: -1 }).lean()) as unknown as ITokenRequest[];
+    return await TokenRequest.find(q).sort({ createdAt: -1 }).lean();
   },
 
-  async approveTokenRequest(requestId: string, adminNote?: string): Promise<{ request: ITokenRequest; token: IToken; accessToken: string; refreshToken: string; }>{
+  async approveTokenRequest(
+    requestId: string,
+    adminNote?: string
+  ): Promise<{ request: ITokenRequest; token: IToken; accessToken: string; refreshToken: string }> {
     const req = await TokenRequest.findById(requestId);
     if (!req) throw new NotFoundError('Request not found');
     if (req.status !== 'pending') throw new ValidationError('Request not pending');
@@ -55,14 +63,19 @@ export const authService = {
     const now = new Date();
 
     // Either update existing active token scopes or create a new token record (jti)
-    let tokenDoc = await Token.findOne({ userId: req.userId, active: true }).sort({ createdAt: -1 });
+    let tokenDoc = await Token.findOne({ userId: req.userId, active: true }).sort({
+      createdAt: -1,
+    });
     const scopes = ensureScopes(req.requestedApis);
 
     if (tokenDoc) {
       tokenDoc.scopes = scopes;
       tokenDoc.revokedAt = null;
       tokenDoc.active = true;
-      tokenDoc.expiresAt = addDays(now, Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS));
+      tokenDoc.expiresAt = addDays(
+        now,
+        Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)
+      );
       await tokenDoc.save();
     } else {
       const jti = new Types.ObjectId().toString();
@@ -72,7 +85,10 @@ export const authService = {
         scopes,
         active: true,
         createdAt: now,
-        expiresAt: addDays(now, Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)),
+        expiresAt: addDays(
+          now,
+          Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)
+        ),
       });
     }
 
@@ -84,7 +100,10 @@ export const authService = {
     );
 
     // Clear older refresh tokens for this tokenId
-    await RefreshToken.updateMany({ tokenId: tokenDoc._id, revokedAt: null }, { $set: { revokedAt: now } });
+    await RefreshToken.updateMany(
+      { tokenId: tokenDoc._id, revokedAt: null },
+      { $set: { revokedAt: now } }
+    );
 
     const refreshPlain = new Types.ObjectId().toString() + '.' + new Types.ObjectId().toString();
     const refreshHash = await bcrypt.hash(refreshPlain, 10);
@@ -93,7 +112,10 @@ export const authService = {
       tokenId: tokenDoc._id,
       hash: refreshHash,
       createdAt: now,
-      expiresAt: addDays(now, Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)),
+      expiresAt: addDays(
+        now,
+        Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)
+      ),
     });
 
     req.status = 'approved';
@@ -102,7 +124,12 @@ export const authService = {
     req.updatedAt = new Date();
     await req.save();
 
-    return { request: req as unknown as ITokenRequest, token: tokenDoc as unknown as IToken, accessToken, refreshToken: refreshPlain };
+    return {
+      request: req,
+      token: tokenDoc,
+      accessToken,
+      refreshToken: refreshPlain,
+    };
   },
 
   async rejectTokenRequest(requestId: string, adminNote?: string): Promise<ITokenRequest> {
@@ -112,13 +139,17 @@ export const authService = {
     req.adminNote = adminNote || null;
     req.updatedAt = new Date();
     await req.save();
-    return req as unknown as ITokenRequest;
+    return req;
   },
 
-  async rotateRefreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string; }>{
+  async rotateRefreshToken(
+    refreshToken: string
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const now = new Date();
     // We do not store refresh token in plaintext; locate by scanning non-revoked and validate hash
-    const candidates = await RefreshToken.find({ revokedAt: null, expiresAt: { $gt: now } }).limit(1000);
+    const candidates = await RefreshToken.find({ revokedAt: null, expiresAt: { $gt: now } }).limit(
+      1000
+    );
     let matched: IRefreshToken | null = null;
     for (const doc of candidates) {
       const ok = await bcrypt.compare(refreshToken, doc.hash);
@@ -154,7 +185,10 @@ export const authService = {
       tokenId: tokenDoc._id,
       hash: refreshHash,
       createdAt: now,
-      expiresAt: addDays(now, Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)),
+      expiresAt: addDays(
+        now,
+        Math.min(config.REFRESH_TOKEN_TTL_DAYS, config.REFRESH_TOKEN_MAX_DAYS)
+      ),
     });
 
     return { accessToken, refreshToken: refreshPlain };
@@ -162,23 +196,30 @@ export const authService = {
 
   async revokeToken(tokenId: string): Promise<void> {
     await Token.findByIdAndUpdate(tokenId, { $set: { active: false, revokedAt: new Date() } });
-    await RefreshToken.updateMany({ tokenId: new Types.ObjectId(tokenId), revokedAt: null }, { $set: { revokedAt: new Date() } });
+    await RefreshToken.updateMany(
+      { tokenId: new Types.ObjectId(tokenId), revokedAt: null },
+      { $set: { revokedAt: new Date() } }
+    );
   },
 
-  async getTokenDetailsByAccessToken(accessToken: string): Promise<{ token: IToken; user: IUser } | null> {
+  async getTokenDetailsByAccessToken(
+    accessToken: string
+  ): Promise<{ token: IToken; user: IUser } | null> {
     try {
       const decoded = jwt.verify(accessToken, config.JWT_ACCESS_SECRET) as JwtPayload;
       const token = await Token.findOne({ jti: decoded.jti, active: true });
       if (!token) return null;
       const user = await User.findById(token.userId);
       if (!user) return null;
-      return { token: token as unknown as IToken, user: user as unknown as IUser };
+      return { token, user };
     } catch {
       return null;
     }
   },
 
-  async findTokenByValue(accessToken: string): Promise<(IToken & { userEmail?: string }) | undefined> {
+  async findTokenByValue(
+    accessToken: string
+  ): Promise<(IToken & { userEmail?: string }) | undefined> {
     try {
       const decoded = jwt.verify(accessToken, config.JWT_ACCESS_SECRET) as JwtPayload;
       const token = await Token.findOne({ jti: decoded.jti, active: true }).populate('userId');
@@ -199,6 +240,6 @@ export const authService = {
       { new: true }
     );
     if (!token) throw new NotFoundError('Token not found');
-    return token as unknown as IToken;
+    return token;
   },
 };

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate, requireScope } from '@/middleware/auth';
 import { usageLogger } from '@/middleware/usage';
 import * as genkitController from '@/controllers/genkit.controller';
+import { validate } from '@/middleware/validation';
 
 /**
  * @openapi
@@ -19,7 +20,15 @@ router.use(requireScope('genkit'));
 router.use(usageLogger());
 
 // Completion endpoints
-router.post('/completions', genkitController.createCompletion);
-router.post('/completions/stream', genkitController.streamCompletion);
+router.post(
+  '/completions',
+  validate(genkitController.completionSchema),
+  genkitController.createCompletion
+);
+router.post(
+  '/completions/stream',
+  validate(genkitController.completionSchema),
+  genkitController.streamCompletion
+);
 
 export default router;

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate, requireScope } from '@/middleware/auth';
 import { usageLogger } from '@/middleware/usage';
 import * as vertexAIController from '@/controllers/vertexAI.controller';
+import { validate } from '@/middleware/validation';
 
 /**
  * @openapi
@@ -37,7 +38,11 @@ router.use(usageLogger());
  *                 type: string
  *                 description: Optional Cloudinary folder to upload into
  */
-router.post('/text2image', vertexAIController.text2Image);
+router.post(
+  '/text2image',
+  validate(vertexAIController.text2ImageSchema),
+  vertexAIController.text2Image
+);
 
 // Video generation
 /**
@@ -58,7 +63,11 @@ router.post('/text2image', vertexAIController.text2Image);
  *                 type: string
  *                 description: Optional Cloudinary folder to upload into
  */
-router.post('/image2video', vertexAIController.image2Video);
+router.post(
+  '/image2video',
+  validate(vertexAIController.image2VideoSchema),
+  vertexAIController.image2Video
+);
 /**
  * @openapi
  * /api/v1/vertex-ai/text2video:
@@ -77,6 +86,10 @@ router.post('/image2video', vertexAIController.image2Video);
  *                 type: string
  *                 description: Optional Cloudinary folder to upload into
  */
-router.post('/text2video', vertexAIController.text2Video);
+router.post(
+  '/text2video',
+  validate(vertexAIController.text2VideoSchema),
+  vertexAIController.text2Video
+);
 
 export default router;

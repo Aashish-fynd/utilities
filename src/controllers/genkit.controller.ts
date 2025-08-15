@@ -6,7 +6,7 @@ import { AuthRequest } from '@/middleware/auth';
 import { logger } from '@/utils/logger';
 
 // Validation schema for completion requests
-const completionSchema = z.object({
+export const completionSchema = z.object({
   prompt: z.string().min(1).max(10000),
   systemPrompt: z.string().max(2000).optional(),
   maxTokens: z.number().int().min(1).max(4096).optional(),
@@ -119,15 +119,15 @@ const completionSchema = z.object({
  *         description: Insufficient permissions
  */
 export const createCompletion = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const params = completionSchema.parse(req.body);
+  const requestBody = req.body;
 
   logger.info('Completion request', {
     userId: req.user?.id,
-    stream: params.stream,
-    promptLength: params.prompt.length,
+    stream: requestBody.stream,
+    promptLength: requestBody.prompt.length,
   });
 
-  if (params.stream) {
+  if (requestBody.stream) {
     // Set up SSE headers for streaming
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -138,7 +138,7 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
     res.write('data: {"type":"connection","status":"connected"}\n\n');
 
     try {
-      const stream = genkitService.streamCompletion(params);
+      const stream = genkitService.streamCompletion(requestBody);
 
       for await (const chunk of stream) {
         // Send each chunk as SSE event
@@ -162,7 +162,7 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
     }
   } else {
     // Non-streaming response
-    const result = await genkitService.generateCompletion(params);
+    const result = await genkitService.generateCompletion(requestBody);
 
     res.json({
       status: 'success',
@@ -183,7 +183,7 @@ export const createCompletion = asyncHandler(async (req: AuthRequest, res: Respo
  *         description: NDJSON stream of completion chunks
  */
 export const streamCompletion = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const params = completionSchema.parse(req.body);
+  const requestBody = req.body;
 
   // Set headers for streaming JSON
   res.setHeader('Content-Type', 'application/x-ndjson');
@@ -191,7 +191,7 @@ export const streamCompletion = asyncHandler(async (req: AuthRequest, res: Respo
   res.setHeader('X-Accel-Buffering', 'no');
 
   try {
-    const stream = genkitService.streamCompletion(params);
+    const stream = genkitService.streamCompletion(requestBody);
 
     for await (const chunk of stream) {
       // Send each chunk as newline-delimited JSON
