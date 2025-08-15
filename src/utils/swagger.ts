@@ -22,6 +22,25 @@ const options = {
           bearerFormat: 'JWT',
         },
       },
+      schemas: {
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', example: 'error' },
+            message: { type: 'string', example: 'Validation failed' },
+            details: { type: 'array', items: { type: 'object' }, nullable: true },
+          },
+        },
+        TokenApprovalResponse: {
+          type: 'object',
+          properties: {
+            accessToken: { type: 'string' },
+            refreshToken: { type: 'string' },
+            token: { type: 'object' },
+            request: { type: 'object' },
+          },
+        },
+      },
     },
     security: [{ bearerAuth: [] }],
   },

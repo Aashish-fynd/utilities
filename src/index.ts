@@ -16,7 +16,7 @@ import { UsageLog } from '@/models/UsageLog.js';
 // Create Express app
 const app: Express = express();
 
-// Trust proxy for Cloudflare
+// Trust proxy if behind proxy
 app.set('trust proxy', true);
 
 // Security middleware
@@ -83,7 +83,7 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Usage logging after response
+// Usage logging after response (only generation endpoints)
 app.use((req: any, res, next) => {
   const start = Date.now();
   const originalEnd: any = res.end;
@@ -92,16 +92,22 @@ app.use((req: any, res, next) => {
       const durationMs = Date.now() - start;
       const statusCode = res.statusCode || 200;
       const user = (req as any).user;
-      UsageLog.create({
-        userId: user?.id ? user.id : undefined,
-        tokenId: user?.tokenId ? user.tokenId : undefined,
-        route: req.path,
-        method: req.method,
-        statusCode,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
-        durationMs,
-      }).catch(() => {});
+      const path: string = req.path || '';
+      const method: string = req.method || '';
+      // Log only generations usage: genkit text and vertex-ai generation endpoints
+      const isGeneration = path.startsWith('/api/v1/genkit') || path.startsWith('/api/v1/vertex-ai');
+      if (isGeneration) {
+        UsageLog.create({
+          userId: user?.id ? user.id : undefined,
+          tokenId: user?.tokenId ? user.tokenId : undefined,
+          route: path,
+          method,
+          statusCode,
+          ip: req.ip,
+          userAgent: req.get('user-agent'),
+          durationMs,
+        }).catch(() => {});
+      }
     } catch {
       // ignore logging errors
     }
@@ -119,100 +125,13 @@ app.use(notFoundHandler);
 // Error handler (must be last)
 app.use(errorHandler);
 
-// For Cloudflare Workers compatibility
-let server: any;
-
-async function start() {
+// Start Node server
+(async () => {
   await connectDb();
+  const PORT = config.PORT;
+  app.listen(PORT, () => {
+    logger.info(`Server listening on port ${PORT}`);
+  });
+})();
 
-  if (process.env.NODE_ENV !== 'production' || !process.env.CLOUDFLARE_WORKER) {
-    // Traditional Node.js server
-    const PORT = config.PORT;
-    server = app.listen(PORT, () => {
-      logger.info(`Server is running on port ${PORT}`);
-      logger.info(`Environment: ${config.NODE_ENV}`);
-    });
-
-    // Graceful shutdown
-    const gracefulShutdown = () => {
-      logger.info('Received shutdown signal, closing server...');
-      server.close(() => {
-        logger.info('Server closed');
-        process.exit(0);
-      });
-
-      // Force close after 30 seconds
-      setTimeout(() => {
-        logger.error('Could not close connections in time, forcefully shutting down');
-        process.exit(1);
-      }, 30000);
-    };
-
-    process.on('SIGTERM', gracefulShutdown);
-    process.on('SIGINT', gracefulShutdown);
-  }
-}
-
-start().catch((err) => {
-  logger.error('Failed to start server', err);
-  process.exit(1);
-});
-
-// Export for Cloudflare Workers
 export default app;
-
-// Export handler for Cloudflare Workers
-export const handleRequest = async (request: Request): Promise<Response> => {
-  // Convert Cloudflare Request to Node.js-like request
-  const url = new URL(request.url);
-  const headers: Record<string, string> = {};
-  request.headers.forEach((value, key) => {
-    headers[key] = value;
-  });
-
-  // Create a mock request/response for Express
-  const mockReq: any = {
-    method: request.method,
-    url: url.pathname + url.search,
-    headers,
-    body: request.method !== 'GET' ? await request.json() : undefined,
-  };
-
-  const mockRes: any = {
-    statusCode: 200,
-    headers: {},
-    body: '',
-    setHeader(key: string, value: string) {
-      this.headers[key] = value;
-    },
-    status(code: number) {
-      this.statusCode = code;
-      return this;
-    },
-    json(data: any) {
-      this.headers['Content-Type'] = 'application/json';
-      this.body = JSON.stringify(data);
-    },
-    send(data: any) {
-      this.body = data;
-    },
-    write(chunk: any) {
-      this.body += chunk;
-    },
-    end() {
-      // No-op for compatibility
-    },
-  };
-
-  // Process request through Express
-  return new Promise((resolve) => {
-    (app as any)(mockReq, mockRes, () => {
-      resolve(
-        new Response(mockRes.body, {
-          status: mockRes.statusCode,
-          headers: mockRes.headers,
-        })
-      );
-    });
-  });
-};

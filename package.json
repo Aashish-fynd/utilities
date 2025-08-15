@@ -10,15 +10,12 @@
     "start": "node dist/index.js",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
-    "test": "jest",
-    "deploy": "pnpm build && wrangler deploy",
-    "deploy:staging": "pnpm build && wrangler deploy --env staging"
+    "test": "jest"
   },
   "keywords": [
     "vertex-ai",
     "genkit",
     "express",
-    "cloudflare",
     "api"
   ],
   "author": "",
@@ -38,7 +35,7 @@
     "genkit": "^1.16.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.8.3",
+    "mongoose": "^8.17.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.17.0",

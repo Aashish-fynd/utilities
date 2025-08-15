@@ -2,21 +2,18 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 import path from 'path';
 
-// Load environment variables from .env file if it exists
-// For Cloudflare Workers, environment variables are set differently
-if (process.env.NODE_ENV !== 'production' || !process.env.CLOUDFLARE_WORKER) {
-  // Try to load .env file from project root
+// Load environment variables from .env files in non-production
+if (process.env.NODE_ENV !== 'production') {
   const envPath = path.resolve(process.cwd(), '.env');
   dotenv.config({ path: envPath });
 
-  // Also try to load .env.local for local development
   const envLocalPath = path.resolve(process.cwd(), '.env.local');
   dotenv.config({ path: envLocalPath, override: true });
 }
 
 const envSchema = z.object({
   // Google Cloud
-  GOOGLE_CLOUD_PROJECT: z.string(),
+  GOOGLE_CLOUD_PROJECT: z.string().optional(),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
 
   // Vertex AI
@@ -35,7 +32,8 @@ const envSchema = z.object({
   API_KEY: z.string().optional(),
 
   // Database (MongoDB)
-  MONGODB_URI: z.string().default('mongodb://localhost:27017/vertex_ai_utilities'),
+  MONGODB_URI: z.string().default('mongodb://localhost:27017'),
+  MONGODB_DB_NAME: z.string().default('vertex_ai_utilities'),
 
   // JWT & Token Lifetimes
   JWT_ACCESS_SECRET: z.string().default('dev-access-secret-change-me'),
@@ -53,7 +51,7 @@ const envSchema = z.object({
 
   // Docs
   SWAGGER_SERVER_URL: z.string().optional(),
-  GEMINI_API_KEY: z.string(),
+  GEMINI_API_KEY: z.string().optional(),
 });
 
 const parseEnv = () => {

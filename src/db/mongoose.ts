@@ -7,7 +7,7 @@ export async function connectDb(): Promise<typeof mongoose> {
   if (isConnected) return mongoose;
   mongoose.set('strictQuery', true);
   const conn = await mongoose.connect(config.MONGODB_URI, {
-    dbName: undefined,
+    dbName: config.MONGODB_DB_NAME,
   });
   isConnected = conn.connection.readyState === 1;
   return conn;
