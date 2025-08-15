@@ -3,19 +3,17 @@ import { vertexAI } from '@genkit-ai/vertexai';
 import { config } from '@/config/index.js';
 import { logger } from '@/utils/logger.js';
 import { ExternalServiceError } from '@/utils/errors.js';
+import googleAI from '@genkit-ai/googleai';
 
 // Initialize Genkit
 export const ai = genkit({
   plugins: [
+    googleAI({
+      apiKey: config.GEMINI_API_KEY,
+    }),
     vertexAI({
       projectId: config.GOOGLE_CLOUD_PROJECT,
       location: config.VERTEX_AI_LOCATION,
-      googleAuth: {
-        credentials: {
-          client_email: config.GOOGLE_APPLICATION_CREDENTIALS,
-          private_key: config.GOOGLE_APPLICATION_CREDENTIALS,
-        },
-      },
     }),
   ],
 });

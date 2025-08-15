@@ -46,6 +46,7 @@ const envSchema = z.object({
 
   // Docs
   SWAGGER_SERVER_URL: z.string().optional(),
+  GEMINI_API_KEY: z.string(),
 });
 
 const parseEnv = () => {
